@@ -13,8 +13,8 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 #Parent class
-Base = DeclarativeBase()
-
+class Base(DeclarativeBase):
+    pass
 
 #gets database session
 def get_db():
