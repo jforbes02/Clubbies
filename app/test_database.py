@@ -3,8 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
-from database import Base, get_db
-from models import User, Photo, Review, Venue
+from app.core.database import Base
+from app.models.models import User, Photo, Review, Venue
 
 # Create test database
 DATABASE_URL = "postgresql://postgres:Coolpyro55@localhost:5432/nightlife_test_db"

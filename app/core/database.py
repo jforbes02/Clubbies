@@ -1,10 +1,14 @@
 #connecting to postgresql
+from fastapi import Depends
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+import os
+from dotenv import load_dotenv
+from typing import Annotated
+load_dotenv()
 
 #Database connection url
-DATABASE_URL = "postgresql://postgres:Coolpyro55@localhost:5432/clubbies_db"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # creates database engine(translates python->sql)
 engine = create_engine(DATABASE_URL)
@@ -23,3 +27,6 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+DbSession = Annotated[Session, Depends(get_db)]

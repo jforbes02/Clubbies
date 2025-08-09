@@ -1,12 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
-from datetime import datetime
-from typing import List, Annotated
-app = FastAPI()
+app = FastAPI(title="Clubbies API", version="1.0")
 
-class User(BaseModel):
-    username: str
-    email: str
 
 @app.get("/")
 async def root():

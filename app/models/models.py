@@ -1,13 +1,15 @@
 #what data is accepted and what do my tables look like
-from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey
+from datetime import datetime
+from enum import Enum
+from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey, Enum as SQEnum
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import ARRAY
+from app.core.database import Base
+from typing import Optional, List
 
-from database import Base
-from typing import Optional
 
-
-#SQALCHEMY MODELS
+                        #SQALCHEMY MODELS
 class User(Base):
     __tablename__ = "users"
     user_id = Column(Integer, primary_key=True, index=True)
@@ -22,6 +24,11 @@ class User(Base):
     reviews = relationship("Review", backref="user")
     #One user can post many photos but each photo belongs to one user
     photos = relationship("Photo", backref="user")
+
+    #age restriction
+    __table_args__ = (
+        CheckConstraint('age >= 16'),
+    )
 
 
 class Photo(Base):
@@ -55,17 +62,34 @@ class Review(Base):
     #each review has a venue with a venue id
     venue_id = Column(Integer, ForeignKey("venues.venue_id"), nullable=False)
 
+class VenueType(str, Enum):
+    NIGHTCLUB = 'Nightclub'
+    BAR = 'Bar'
+    LOUNGE = 'Lounge'
+    JAZZCLUB = 'Jazz_club'
+    ROOFTOP = 'Rooftop'
+    SPORTSBAR = 'Sports_bar'
+    COLLEGE = 'College'
+
+#venue space
+class VenueCapacity(str, Enum):
+    MASSIVE = 'Massive'
+    LARGE = 'Large'
+    MEDIUM = 'Medium'
+    SMALL = 'Small'
+    TINY = 'Tiny'
+
 
 class Venue(Base):
     __tablename__ = "venues"
     venue_id = Column(Integer, primary_key=True, index=True)
     venue_name = Column(String(255), nullable=False)
     address = Column(String(255), nullable=False)
-    hours = Column(String(255), nullable=False)
-    venue_type = Column(String(35), nullable=False) #lounge, bar, jazz club, club,
+    hours = Column(String(100), nullable=False)
+    venue_type = Column(ARRAY(SQEnum(VenueType)), nullable=False) #lounge, bar, jazz club, club,
     age_req = Column(Integer, nullable=False)
     description = Column(String(255))
-    capacity = Column(String(20))
+    capacity = Column(SQEnum(VenueCapacity), nullable=False)
 
     #relationships
     reviews = relationship("Review", backref="venue")
@@ -73,23 +97,60 @@ class Venue(Base):
 
 #TempEvent in future expansion
 
-#Pydantic MODELS
+                    #Pydantic MODELS
 
-#Pydantic model for creating users
-#used for registration
-class CreateUser(BaseModel):
-    username: str = Field(..., min_length=4, max_length=40)
-    email: EmailStr = Field(...)
-    password: str = Field(..., min_length=6, description="Must be at least 6 characters long")
-    age: int = Field(...)
 
-#Pydantic model for getting user information
+                    #User Models
+
+
+#model for getting user information
 class UserResponse(BaseModel):
     user_id: int
     username: str
     email: EmailStr
     age: int
 
+                        #Photo Models
 class CreatePhoto(BaseModel):
+    img_data: str = Field(..., description="The image data")
+    caption: Optional[str] = Field(None, max_length=255)
+    venue_id: int = Field(..., gt=0)
+
+class PhotoResponse(BaseModel):
     img_data: str = Field(...)
     caption: Optional[str] = None
+    venue_id: int
+    user_id: int
+    uploaded_at: datetime
+    photo_id: int
+    username: str
+    venue_name: str
+
+class UpdatePhoto(BaseModel):
+    img_data: Optional[str] = None
+    caption: Optional[str] = None
+
+
+                        #Review Models
+
+#model for creating new reviews (input)
+class CreateReview(BaseModel):
+    venue_id: int = Field(..., gt=0, description="ID of reviewed venue")
+    review_text: Optional[str] = Field(None, max_length=1000, description="Optional Review Text")
+    rating: float = Field(..., gt=0, le=5, description="Numeric rating from .1 - 5.0")
+
+#returns data of reviews (output)
+class ReviewResponse(BaseModel):
+    review_id: int
+    rating: float
+    date_made: datetime
+    user_id: int
+    venue_id: int
+    review_text: Optional[str]
+    username: Optional[str] = None
+    venue_name: Optional[str] = None
+
+#updating reviews input
+class UpdateReview(BaseModel):
+    rating: Optional[float] = Field(None, gt=0, le=5, description="Updated numeric rating")
+    review_text: Optional[str] = Field(None, max_length=1000, description="Updated review text")
