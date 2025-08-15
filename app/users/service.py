@@ -5,8 +5,8 @@ from app.models.models import User
 from app.auth.service import verify_password, get_password_hash
 import logging
 
-def get_user_by_id(db: Session, user_id: int) -> user_model.UserResponse:
-    user = db.query(user_model.User).filter(user_model.User.id == user_id).first()
+def get_user_by_id(db: Session, user_id: int) -> User:
+    user = db.query(User).get(user_id)
     if not user:
         logging.warning(f"User {user_id} not found")
     logging.info(f"User with ID {user_id} found")

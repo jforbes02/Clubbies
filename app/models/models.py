@@ -1,7 +1,8 @@
 #what data is accepted and what do my tables look like
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey, Enum as SQEnum
+from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey, Enum as SQEnum, \
+    Double
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -90,7 +91,7 @@ class Venue(Base):
     age_req = Column(Integer, nullable=False)
     description = Column(String(255))
     capacity = Column(SQEnum(VenueCapacity), nullable=False)
-
+    price = Column(String(255))
     #relationships
     reviews = relationship("Review", backref="venue")
     photos = relationship("Photo", backref="venue")
