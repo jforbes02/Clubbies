@@ -35,10 +35,10 @@ class User(Base):
 class Photo(Base):
     __tablename__ = "photos"
     photo_id = Column(Integer, primary_key=True, index=True)
-    img_data = Column(Text, nullable=False)
+    img_url = Column(String(500), nullable=False)
     caption = Column(String(255))
     uploaded_at = Column(DateTime, nullable=False)
-
+    file_size=Column(Integer)
     #relationships
     #each photo has a user with a user_id
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)

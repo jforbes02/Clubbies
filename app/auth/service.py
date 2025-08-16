@@ -1,6 +1,6 @@
 from datetime import timedelta, datetime, timezone
+from http.client import HTTPException
 
-from ..exceptions import AuthenticationError
 from typing import Annotated
 from uuid import UUID, uuid4
 from fastapi import Depends
@@ -65,7 +65,7 @@ def verify_token(token: str) -> reg_model.TokenData:
         return reg_model.TokenData(user_id=user_id) #Returns token Data
     except PyJWTError as e:
         logging.warning(f"Failed authentication attempt for token {token}")
-        raise AuthenticationError from e
+        raise HTTPException from e
 
 #user Registration
 def register_user(db: Session, create_user: reg_model.CreateUser) -> None:
@@ -99,6 +99,6 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
             db:Session) -> reg_model.Token:
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
-        raise AuthenticationError
+        raise HTTPException
     token = create_access_token(user.username, user.id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return reg_model.Token(access_token=token, token_type="bearer")

@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
 from fastapi import HTTPException
 from . import v_models
 from app.models.models import Venue

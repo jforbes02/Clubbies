@@ -6,7 +6,7 @@ from ..models.models import Venue
 from typing import List, Optional
 router = APIRouter(
     prefix="/venues",
-    tags=["venues"],
+    tags=["venues"]
 )
 
 @router.get("/", status_code=status.HTTP_200_OK)
