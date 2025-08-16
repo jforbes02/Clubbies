@@ -72,6 +72,9 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
             query = query.filter(Venue.capacity >= special_filter.min_capacity)
         if special_filter.max_capacity:
             query = query.filter(Venue.capacity <= special_filter.max_capacity)
+
+
+
         #hours open filters
         if special_filter.hours:
             query = query.filter(Venue.hours.ilike(f"%{special_filter.hours}%"))
@@ -89,6 +92,7 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
             query = query.filter(Venue.address.ilike(f"%{special_filter.location_search}%"))
 
         venues = query.all()
+
         logging.info(f"Found {len(venues)} venues")
         return venues
     except Exception as e:

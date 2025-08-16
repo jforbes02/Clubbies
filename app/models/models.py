@@ -91,7 +91,7 @@ class Venue(Base):
     age_req = Column(Integer, nullable=False)
     description = Column(String(255))
     capacity = Column(SQEnum(VenueCapacity), nullable=False)
-    price = Column(String(255))
+    price = Column(Integer, nullable=False)
     #relationships
     reviews = relationship("Review", backref="venue")
     photos = relationship("Photo", backref="venue")

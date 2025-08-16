@@ -11,7 +11,7 @@ class VenueBase(BaseModel):
     capacity: VenueCapacity = Field(..., description="How much space the venue has")
     description: Optional[str] = Field(None, max_length=255)
     hours: str = Field(..., max_length=100)
-    price: str = Field(...)
+    price: int = Field(...)
 class VenueCreate(VenueBase):
     pass
 
@@ -36,7 +36,7 @@ class VenueUpdate(BaseModel):
     venue_name: Optional[str] = Field(None, max_length=255)
     age_req: Optional[int] = Field(None, ge=16)
     address: Optional[str] = Field(None, min_length=15, max_length=255)
-
+    price: Optional[int] = Field(None)
 #search and filtering
 class VenueFilter(BaseModel):
     hours: Optional[str] = Field(None, max_length=100)
