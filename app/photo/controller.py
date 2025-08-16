@@ -5,6 +5,7 @@ from starlette import status
 from app.core.database import DbSession
 from . import p_model
 from . import service
+from .. import photo
 from ..models.models import Photo, User, Venue
 
 router = APIRouter(
@@ -34,3 +35,7 @@ async def upload_photo(db: DbSession,
 @router.delete("/delete-photo", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_photo(db: DbSession, photo_id: int):
     service.delete_photo(db, photo_id)
+
+@router.put("/update-photo", status_code=status.HTTP_204_NO_CONTENT)
+async def update_photo(db: DbSession, photo_id: int, new_caption: str):
+    service.change_photo_caption(db, photo_id, new_caption)

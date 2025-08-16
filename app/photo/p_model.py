@@ -19,5 +19,3 @@ class PhotoResponse(BaseModel):
 
     class Config:
         from_attributes = True
-class PhotoUpdate(BaseModel):
-    caption: Optional[str] = Field(None, max_length=255)

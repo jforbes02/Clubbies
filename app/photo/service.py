@@ -79,3 +79,14 @@ def delete_photo(db: Session, photo_id: int) -> None:
         logging.error(f"Failed to delete photo: {str(e)}")
         raise e
 
+def change_photo_caption(db: Session, photo_id: int, caption: str):
+    try:
+        photo = get_photo_by_id(db, photo_id)
+        if not photo:
+            raise HTTPException(status_code=404, detail="Photo not found")
+        photo.caption = caption
+        db.commit()
+        db.refresh(photo)
+    except HTTPException as e:
+        logging.error(f"Failed to change photo caption: {str(e)}")
+        raise e
