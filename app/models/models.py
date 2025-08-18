@@ -3,9 +3,10 @@ from datetime import datetime
 from enum import Enum
 from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey, Enum as SQEnum, \
     Double
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.sql import func
 from app.core.database import Base
 from typing import Optional, List
 
@@ -50,7 +51,7 @@ class Review(Base):
     review_id = Column(Integer, primary_key=True, index=True)
     rating = Column(Float, nullable=False)
     review_text = Column(Text)
-    date_made = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
 
     __table_args__ = (
         CheckConstraint('rating <= 5'),
@@ -95,63 +96,3 @@ class Venue(Base):
     #relationships
     reviews = relationship("Review", backref="venue")
     photos = relationship("Photo", backref="venue")
-
-#TempEvent in future expansion
-
-                    #Pydantic MODELS
-
-
-                    #User Models
-
-
-#model for getting user information
-class UserResponse(BaseModel):
-    user_id: int
-    username: str
-    email: EmailStr
-    age: int
-
-                        #Photo Models
-class CreatePhoto(BaseModel):
-    img_data: str = Field(..., description="The image data")
-    caption: Optional[str] = Field(None, max_length=255)
-    venue_id: int = Field(..., gt=0)
-
-class PhotoResponse(BaseModel):
-    img_data: str = Field(...)
-    caption: Optional[str] = None
-    venue_id: int
-    user_id: int
-    uploaded_at: datetime
-    photo_id: int
-    username: str
-    venue_name: str
-
-class UpdatePhoto(BaseModel):
-    img_data: Optional[str] = None
-    caption: Optional[str] = None
-
-
-                        #Review Models
-
-#model for creating new reviews (input)
-class CreateReview(BaseModel):
-    venue_id: int = Field(..., gt=0, description="ID of reviewed venue")
-    review_text: Optional[str] = Field(None, max_length=1000, description="Optional Review Text")
-    rating: float = Field(..., gt=0, le=5, description="Numeric rating from .1 - 5.0")
-
-#returns data of reviews (output)
-class ReviewResponse(BaseModel):
-    review_id: int
-    rating: float
-    date_made: datetime
-    user_id: int
-    venue_id: int
-    review_text: Optional[str]
-    username: Optional[str] = None
-    venue_name: Optional[str] = None
-
-#updating reviews input
-class UpdateReview(BaseModel):
-    rating: Optional[float] = Field(None, gt=0, le=5, description="Updated numeric rating")
-    review_text: Optional[str] = Field(None, max_length=1000, description="Updated review text")
