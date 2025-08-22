@@ -17,4 +17,4 @@ def get_current_user(current_user: CurrentUser, db: DbSession):
 def change_password(password_change: user_model.PasswordChange
                     ,db: DbSession
                     ,current_user: CurrentUser):
-    service.change_password(db, current_user.get_id, password_change)
+    service.change_password(db, current_user.get_id(), password_change)

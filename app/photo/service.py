@@ -69,6 +69,50 @@ def get_photo_by_id(db: Session, id: int) -> Photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     return photo
 
+def get_photos_by_venue(db: Session, venue_id: int, after_photo_id: int = None, limit: int = 20) -> list[Photo]:
+    try:
+        venue = db.query(Venue).filter(Venue.venue_id == venue_id).first()
+        if not venue:
+            raise HTTPException(status_code=404, detail="Venue not found")
+            
+        query = db.query(Photo).filter(Photo.venue_id == venue_id)
+        
+        if after_photo_id:
+            query = query.filter(Photo.photo_id > after_photo_id)
+            
+        photos = query.order_by(Photo.photo_id.asc()).limit(limit).all()
+        
+        logging.info(f"Retrieved {len(photos)} photos for venue {venue_id}")
+        return photos
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error fetching photos for venue {venue_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+def get_photos_by_user(db: Session, user_id: int, after_photo_id: int = None, limit: int = 20) -> list[Photo]:
+    try:
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        query = db.query(Photo).filter(Photo.user_id == user_id)
+        
+        if after_photo_id:
+            query = query.filter(Photo.photo_id > after_photo_id)
+            
+        photos = query.order_by(Photo.photo_id.asc()).limit(limit).all()
+        
+        logging.info(f"Retrieved {len(photos)} photos for user {user_id}")
+        return photos
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error fetching photos for user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 def delete_photo(db: Session, photo_id: int) -> None:
     try:
         photo = get_photo_by_id(db, photo_id)

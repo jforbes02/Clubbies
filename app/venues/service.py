@@ -59,7 +59,21 @@ def delete_venue(db: Session, venue_id: int) -> None:
         logging.error("could not find Venue")
         raise e
 
-def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFilter) -> List[Venue]:
+def get_all_venues(db: Session, after_venue_id: int = None, limit: int = 20) -> List[Venue]:
+    try:
+        query = db.query(Venue)
+        
+        if after_venue_id:
+            query = query.filter(Venue.venue_id > after_venue_id)
+            
+        venues = query.order_by(Venue.venue_id.asc()).limit(limit).all()
+        logging.info(f"Retrieved {len(venues)} venues")
+        return venues
+    except Exception as e:
+        logging.error(f"Error fetching venues: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFilter, after_venue_id: int = None, limit: int = 20) -> List[Venue]:
     try:
         query = db.query(Venue)
 
@@ -90,7 +104,10 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
         if special_filter.location_search:
             query = query.filter(Venue.address.ilike(f"%{special_filter.location_search}%"))
 
-        venues = query.all()
+        if after_venue_id:
+            query = query.filter(Venue.venue_id > after_venue_id)
+            
+        venues = query.order_by(Venue.venue_id.asc()).limit(limit).all()
 
         logging.info(f"Found {len(venues)} venues")
         return venues

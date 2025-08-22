@@ -100,5 +100,5 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException
-    token = create_access_token(user.username, user.id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    token = create_access_token(user.username, user.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return reg_model.Token(access_token=token, token_type="bearer")

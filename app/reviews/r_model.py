@@ -38,4 +38,4 @@ class UpdateReview(BaseModel):
     def validate_review_text(cls, v):
         if v is not None and not v.strip():
             raise ValueError("Review text cannot be empty")
-        return v.strip if v else v
+        return v.strip() if v else v

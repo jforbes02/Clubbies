@@ -33,7 +33,7 @@ async def upload_photo(db: DbSession,
     )
 
 @router.delete("/delete-photo", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_photo(db: DbSession, photo_id: int):
+def delete_photo(db: DbSession, photo_id: int):
     service.delete_photo(db, photo_id)
 
 @router.put("/update-photo", status_code=status.HTTP_204_NO_CONTENT)

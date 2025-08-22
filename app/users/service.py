@@ -12,6 +12,20 @@ def get_user_by_id(db: Session, user_id: int) -> User:
     logging.info(f"User with ID {user_id} found")
     return user
 
+def get_all_users(db: Session, after_user_id: int = None, limit: int = 20) -> list[User]:
+    try:
+        query = db.query(User)
+        
+        if after_user_id:
+            query = query.filter(User.user_id > after_user_id)
+            
+        users = query.order_by(User.user_id.asc()).limit(limit).all()
+        logging.info(f"Retrieved {len(users)} users")
+        return users
+    except Exception as e:
+        logging.error(f"Error fetching users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 def change_password(db:Session, user_id: int, password_change: user_model.PasswordChange) -> None:
     try:
         user = get_user_by_id(db, user_id) #get user id
@@ -22,7 +36,7 @@ def change_password(db:Session, user_id: int, password_change: user_model.Passwo
             raise HTTPException(status_code=401, detail="Invalid password")
 
         #verify new passwords are the same
-        if password_change.new_password != user.new_password_confirmed:
+        if password_change.new_password != password_change.new_password_confirmed:
             logging.warning(f"Passwords are not the same for password change for user {user_id}")
             raise HTTPException(status_code=401, detail="Passwords are not the same")
 

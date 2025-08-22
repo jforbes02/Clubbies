@@ -9,7 +9,7 @@ router = APIRouter(
     tags=["venues"]
 )
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_venue(db:DbSession, venue_data: v_models.VenueCreate):
     return service.create_venue(db, venue_data)
 
