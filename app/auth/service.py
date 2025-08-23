@@ -1,9 +1,6 @@
-from datetime import timedelta, datetime, timezone
-from http.client import HTTPException
-
+from datetime import timedelta, datetime
 from typing import Annotated
-from uuid import UUID, uuid4
-from fastapi import Depends
+from fastapi import HTTPException, Depends
 from passlib.context import CryptContext
 import jwt
 from jwt import PyJWTError
@@ -32,6 +29,7 @@ def get_password_hash(password: str) -> str:
 
 #Authentication functions
 
+# noinspection PyTypeChecker
 def authenticate_user(username: str, password: str, db: Session) -> User | bool:
     """
     Checks if the username and password are valid
@@ -41,6 +39,7 @@ def authenticate_user(username: str, password: str, db: Session) -> User | bool:
     if not user or not verify_password(password, user.password_hashed): #check if exists and password matches
         logging.warning(f"Failed authentication attempt for user {username}")
         return False
+    logging.info(f"Successful authentication attempt for user {username}")
     return user
 
 def create_access_token(username: str, user_id: int, expires_delta: timedelta) -> str:
@@ -50,7 +49,7 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta) -
     encode = {
         'sub': username,
         'id': str(user_id), #converts UUID into a string for JSON
-        'exp': datetime.utcnow() + expires_delta, #expiration time
+        'exp': datetime.now(datetime.timezone.utc) + expires_delta, #expiration time
     }
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM) #makes and returns signed JWT
 
@@ -68,22 +67,33 @@ def verify_token(token: str) -> reg_model.TokenData:
         raise HTTPException from e
 
 #user Registration
+# noinspection PyTypeChecker
 def register_user(db: Session, create_user: reg_model.CreateUser) -> None:
     """
     Registers a new user and hashes the password before storing
     """
+    existing_user = db.query(User).filter(User.username == create_user.username) | (User.email == create_user.email).first()
+    if existing_user:
+        logging.info(f"User already exists")
+    if existing_user.username == create_user.username:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    elif existing_user.email == create_user.email:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
     try:
         create_user_model = User(
-            email=create_user.email, #email from input
-            username=create_user.username, #username from input
+            username=create_user.username,
+            email=create_user.email,  # email from input
             age=create_user.age, #age from input
             password_hashed=get_password_hash(create_user.password) #hashes input
         )
         db.add(create_user_model) #adds to db session
         db.commit() #saves to db
+        logging.info(f"Created new user {create_user.username} Success!")
     except Exception as e:
+        db.rollback()
         logging.error(f"Failed to register user: {create_user.username}. Error: {e}")
-        raise
+        raise HTTPException(status_code=500, detail="Failed to register user")
 
 #Dependency functions for endpoints
 def get_user(token: Annotated[str, Depends(oauth2_bearer)]) -> reg_model.TokenData:

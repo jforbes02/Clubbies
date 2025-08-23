@@ -45,9 +45,9 @@ def update_venue(db: Session,venue_id: int, change_venue: v_models.VenueUpdate) 
             setattr(venue, key, value)
         db.commit()
         logging.info(f"Venue {venue.venue_name} updated")
-    except HTTPException as e:
+    except HTTPException:
         logging.error("could not find Venue")
-        raise e
+        raise HTTPException(status_code=400, detail="Venue not found")
 
 def delete_venue(db: Session, venue_id: int) -> None:
     try:
@@ -55,10 +55,12 @@ def delete_venue(db: Session, venue_id: int) -> None:
         db.delete(venue)
         db.commit()
         logging.info(f"Venue {venue_id} deleted, ID: {venue_id}")
-    except HTTPException as e:
+    except HTTPException:
         logging.error("could not find Venue")
-        raise e
+        raise HTTPException(status_code=404, detail="Venue not found")
 
+
+# noinspection PyTypeChecker
 def get_all_venues(db: Session, after_venue_id: int = None, limit: int = 20) -> List[Venue]:
     try:
         query = db.query(Venue)
@@ -69,10 +71,12 @@ def get_all_venues(db: Session, after_venue_id: int = None, limit: int = 20) -> 
         venues = query.order_by(Venue.venue_id.asc()).limit(limit).all()
         logging.info(f"Retrieved {len(venues)} venues")
         return venues
-    except Exception as e:
-        logging.error(f"Error fetching venues: {str(e)}")
+    except HTTPException:
+        logging.error(f"Error fetching venues")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
+# noinspection PyTypeChecker
 def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFilter, after_venue_id: int = None, limit: int = 20) -> List[Venue]:
     try:
         query = db.query(Venue)
@@ -81,12 +85,11 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
             query = query.filter(Venue.venue_name.ilike(f"%{venue_name}%"))
 
         #capacity filters
-        if special_filter.min_capacity:
-            query = query.filter(Venue.capacity >= special_filter.min_capacity)
-        if special_filter.max_capacity:
-            query = query.filter(Venue.capacity <= special_filter.max_capacity)
-
-
+        if special_filter:
+            if special_filter.min_capacity:
+                query = query.filter(Venue.capacity >= special_filter.min_capacity)
+            if special_filter.max_capacity:
+                query = query.filter(Venue.capacity <= special_filter.max_capacity)
 
         #hours open filters
         if special_filter.hours:
@@ -99,7 +102,7 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
             query = query.filter(Venue.age_req <= special_filter.min_age)
         #venue_type filter
         if special_filter.venue_type:
-            query = query.filter(Venue.venue_type == special_filter.venue_type)
+            query = query.filter(Venue.venue_type.any(special_filter.venue_type))
         #location search
         if special_filter.location_search:
             query = query.filter(Venue.address.ilike(f"%{special_filter.location_search}%"))
@@ -111,6 +114,6 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
 
         logging.info(f"Found {len(venues)} venues")
         return venues
-    except Exception as e:
+    except HTTPException:
         logging.error(f"could not find Venue's searched for")
-        return []
+        raise HTTPException(status_code=500, detail="Search Failed")

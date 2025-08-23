@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from ..models.models import VenueType,VenueCapacity
+from ..models.models import VenueType, VenueCapacity
 from typing import Optional, List
 
 #model for creating venues (input)

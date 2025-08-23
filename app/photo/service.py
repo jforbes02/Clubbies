@@ -1,12 +1,13 @@
 import os
 from datetime import datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from . import p_model
 from fastapi import UploadFile, HTTPException
 from app.models.models import Photo, Venue, User
 import logging
 import uuid
+from typing import List
 
 async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int, file: UploadFile) -> Photo:
     try:
@@ -52,7 +53,7 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
             venue_id=photo_data.venue_id,
             user_id=user_id,
             file_size=len(file_content),
-            uploaded_at=datetime.utcnow()
+            uploaded_at=datetime.now(datetime.timezone.utc),
         )
         db.add(photo)
         db.commit()
@@ -63,19 +64,21 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to upload photo: {str(e)}")
 
-def get_photo_by_id(db: Session, id: int) -> Photo:
-    photo = db.query(Photo).get(id)
+def get_photo_by_id(db: Session, picture_id: int) -> Photo:
+    photo = db.query(Photo).get(picture_id)
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     return photo
 
-def get_photos_by_venue(db: Session, venue_id: int, after_photo_id: int = None, limit: int = 20) -> list[Photo]:
+
+# noinspection PyTypeChecker
+def get_photos_by_venue(db: Session, venue_id: int, after_photo_id: int = None, limit: int = 20) -> List[Photo]:
     try:
         venue = db.query(Venue).filter(Venue.venue_id == venue_id).first()
         if not venue:
             raise HTTPException(status_code=404, detail="Venue not found")
             
-        query = db.query(Photo).filter(Photo.venue_id == venue_id)
+        query = db.query(Photo).options(joinedload(Photo.user), joinedload(Photo.venue).filter(Photo.venue_id == venue_id)
         
         if after_photo_id:
             query = query.filter(Photo.photo_id > after_photo_id)
@@ -84,14 +87,14 @@ def get_photos_by_venue(db: Session, venue_id: int, after_photo_id: int = None, 
         
         logging.info(f"Retrieved {len(photos)} photos for venue {venue_id}")
         return photos
-        
-    except HTTPException:
-        raise
+
     except Exception as e:
         logging.error(f"Error fetching photos for venue {venue_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-def get_photos_by_user(db: Session, user_id: int, after_photo_id: int = None, limit: int = 20) -> list[Photo]:
+
+# noinspection PyTypeChecker
+def get_photos_by_user(db: Session, user_id: int, after_photo_id: int = None, limit: int = 20) -> List[Photo]:
     try:
         user = db.query(User).filter(User.user_id == user_id).first()
         if not user:

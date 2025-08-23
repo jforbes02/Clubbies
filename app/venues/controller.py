@@ -9,23 +9,33 @@ router = APIRouter(
     tags=["venues"]
 )
 
+
+# noinspection PyTypeHints
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_venue(db:DbSession, venue_data: v_models.VenueCreate):
     return service.create_venue(db, venue_data)
 
+
+# noinspection PyTypeHints
 @router.get("/{venue_id}", response_model=v_models.VenueResponse)
 def get_venue(db: DbSession, venue_id: int):
     return service.get_venue_by_id(db, venue_id)
 
+
+# noinspection PyTypeHints
 @router.delete("/{venue_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_venue(db: DbSession, venue_id: int):
     service.delete_venue(db, venue_id)
 
+
+# noinspection PyTypeHints
 @router.get("/get_venues", response_model=List[v_models.VenueResponse])
 def get_all_venues(db: DbSession):
     venues = db.query(Venue).all()
     return venues
 
+
+# noinspection PyTypeHints
 @router.get("/filter-search", response_model=List[v_models.VenueResponse])
 def search_venues(db: DbSession,
                   venue_name: Optional[str] = Query(None) ,
@@ -50,6 +60,7 @@ def search_venues(db: DbSession,
     return venues
 
 
+# noinspection PyTypeHints
 @router.put("/update-venue/{venue_id}", status_code=status.HTTP_200_OK)
 def change_venue(venue_id: int, venue_change: v_models.VenueUpdate,
                  db: DbSession):

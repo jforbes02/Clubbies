@@ -4,15 +4,19 @@ from . import user_model
 from app.models.models import User
 from app.auth.service import verify_password, get_password_hash
 import logging
+from typing import List
 
 def get_user_by_id(db: Session, user_id: int) -> User:
     user = db.query(User).get(user_id)
     if not user:
         logging.warning(f"User {user_id} not found")
+        raise HTTPException(status_code=404, detail="User not found")
     logging.info(f"User with ID {user_id} found")
     return user
 
-def get_all_users(db: Session, after_user_id: int = None, limit: int = 20) -> list[User]:
+
+# noinspection PyTypeChecker
+def get_all_users(db: Session, after_user_id: int = None, limit: int = 20) -> List[User]:
     try:
         query = db.query(User)
         

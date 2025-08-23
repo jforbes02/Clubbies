@@ -3,7 +3,6 @@ from starlette import status
 from typing import Optional
 from app.core.database import DbSession
 from . import r_model
-from .. import reviews
 from . import service
 
 router = APIRouter(
@@ -11,6 +10,8 @@ router = APIRouter(
     tags=["reviews"]
 )
 
+
+# noinspection PyTypeHints
 @router.post("/upload-review", status_code=status.HTTP_201_CREATED)
 def upload_review(db:DbSession,
                         current_user_id: int,
@@ -25,17 +26,21 @@ def upload_review(db:DbSession,
         review_id=review.review_id,
         rating=review.rating,
         created_at=review.created_at,
-        user_id=review.user_id,
+        user_id=current_user_id,
         venue_id=review.venue_id,
         review_text=review.review_text,
         username=review.user.username,
         venue_name=review.venue.venue_name
     )
 
+
+# noinspection PyTypeHints
 @router.delete("/delete-review", status_code=status.HTTP_204_NO_CONTENT)
 def delete_review(db:DbSession, review_id: int, current_user_id: int):
     service.delete_review(db, review_id, current_user_id)
 
+
+# noinspection PyTypeHints
 @router.get("/venue/{venue_id}/reviews", status_code=status.HTTP_200_OK)
 def get_reviews_by_venue(db:DbSession, venue_id: int, after_review_id: int = None, limit: int=20):
     reviews = service.get_reviews_by_venue(db, venue_id, after_review_id, limit)
@@ -50,6 +55,8 @@ def get_reviews_by_venue(db:DbSession, venue_id: int, after_review_id: int = Non
         venue_name=review.venue.venue_name
     ) for review in reviews]
 
+
+# noinspection PyTypeHints
 @router.put("/update-review/{review_id}", status_code=status.HTTP_200_OK)
 def update_review(db: DbSession, current_user_id: int, review_id: int,
                   rating: Optional[float] = Form(None), review_text: Optional[str] = Form(None)):

@@ -1,13 +1,16 @@
+import uvicorn
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
-# Import all your routers
+# Import routers
 from app.auth import controller as auth_controller
 from app.users import controller as users_controller
 from app.venues import controller as venues_controller
 from app.reviews import controller as reviews_controller
 from app.photo import controller as photo_controller
+from app.protection.middleware import setup_middleware
 
+load_dotenv()
 # Create FastAPI app instance
 app = FastAPI(
     title="Clubbies API", 
@@ -15,14 +18,8 @@ app = FastAPI(
     description="A nightlife venue review and photo sharing API"
 )
 
-# Add CORS middleware for mobile app
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Configure this for production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Setup security middleware
+setup_middleware(app)
 
 # Register all routers
 app.include_router(auth_controller.router)
@@ -39,3 +36,7 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)

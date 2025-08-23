@@ -5,14 +5,13 @@ from starlette import status
 from app.core.database import DbSession
 from . import p_model
 from . import service
-from .. import photo
-from ..models.models import Photo, User, Venue
-
 router = APIRouter(
     prefix='/photo',
     tags=['photo']
 )
 
+
+# noinspection PyTypeHints
 @router.post("/upload", status_code=status.HTTP_200_OK)
 async def upload_photo(db: DbSession,
                        current_user_id: int,
@@ -27,15 +26,21 @@ async def upload_photo(db: DbSession,
         img_url=photo.img_url,
         caption=photo.caption,
         file_size=photo.file_size,
-        username=current_user_id.username,
+        username=photo.user.username,
         uploaded_at=photo.uploaded_at,
         venue_id=photo.venue_id,
+        user_id=current_user_id,
+        venue_name=photo.venue.venue_name,
     )
 
+
+# noinspection PyTypeHints
 @router.delete("/delete-photo", status_code=status.HTTP_204_NO_CONTENT)
 def delete_photo(db: DbSession, photo_id: int):
     service.delete_photo(db, photo_id)
 
+
+# noinspection PyTypeHints
 @router.put("/update-photo", status_code=status.HTTP_204_NO_CONTENT)
 async def update_photo(db: DbSession, photo_id: int, new_caption: str):
     service.change_photo_caption(db, photo_id, new_caption)

@@ -5,7 +5,10 @@ from sqlalchemy import func
 from . import r_model
 from app.models.models import User, Venue, Review
 import logging
+from typing import List
 
+
+# noinspection PyTypeChecker
 def create_review(db: Session, review_data: r_model.CreateReview, user_id: int) -> Review:
     try:
         venue = db.query(Venue).filter(Venue.venue_id == review_data.venue_id).first()
@@ -54,7 +57,8 @@ def create_review(db: Session, review_data: r_model.CreateReview, user_id: int) 
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-def get_reviews_by_venue(db: Session, venue_id: int, after_review_id: int = None, limit: int = 20) -> list[Review]:
+# noinspection PyTypeChecker
+def get_reviews_by_venue(db: Session, venue_id: int, after_review_id: int = None, limit: int = 20) -> List[Review]:
     try:
         venue = db.query(Venue).filter(Venue.venue_id == venue_id).first()
         if not venue:
@@ -76,7 +80,8 @@ def get_reviews_by_venue(db: Session, venue_id: int, after_review_id: int = None
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-def get_reviews_by_user(db: Session, user_id: int, after_review_id: int = None, limit: int = 20) -> list[Review]:
+# noinspection PyTypeChecker
+def get_reviews_by_user(db: Session, user_id: int, after_review_id: int = None, limit: int = 20) -> List[Review]:
     try:
         user = db.query(User).filter(User.user_id == user_id).first()
         if not user:
@@ -98,7 +103,7 @@ def get_reviews_by_user(db: Session, user_id: int, after_review_id: int = None, 
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview, user_id: int) -> Review:
+def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview, user_id: int):
     try:
         review = db.query(Review).filter(Review.review_id == review_id).first()
         if not review:
@@ -116,8 +121,6 @@ def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview
         db.refresh(review)
         
         logging.info(f"Review {review_id} updated successfully by user {user_id}")
-        return review
-        
     except HTTPException:
         raise
     except Exception as e:

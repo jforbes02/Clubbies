@@ -1,18 +1,16 @@
 #what data is accepted and what do my tables look like
-from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey, Enum as SQEnum, \
-    Double
-from pydantic import BaseModel, EmailStr
+from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey, Enum as SQEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import func
 from app.core.database import Base
-from typing import Optional, List
 
 
                         #SQALCHEMY MODELS
+# noinspection SpellCheckingInspection
 class User(Base):
+    # noinspection SpellCheckingInspection
     __tablename__ = "users"
     user_id = Column(Integer, primary_key=True, index=True)
     username = Column(String(40), unique=True, index=True, nullable=False)
@@ -63,6 +61,7 @@ class Review(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     #each review has a venue with a venue id
     venue_id = Column(Integer, ForeignKey("venues.venue_id"), nullable=False)
+
 
 class VenueType(str, Enum):
     NIGHTCLUB = 'Nightclub'
