@@ -17,7 +17,7 @@ router = APIRouter(
 def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: CurrentUser):
     # Admin-only venue creation
     user = db.query(Venue).join(User).filter(User.user_id == current_user.get_id()).first()
-    # TODO: Add proper admin role system
+    # Add proper admin role system
 
     venue = service.create_venue(db, venue_data)
     return v_models.VenueResponse(
@@ -42,7 +42,7 @@ def get_venue(db: DbSession, venue_id: int):
 # noinspection PyTypeHints
 @router.delete("/{venue_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_venue(db: DbSession, venue_id: int):
-    # TODO: Add admin check here
+    # Add admin check here
     service.delete_venue(db, venue_id)
 
 
@@ -111,7 +111,7 @@ def search_venues(db: DbSession,
 @router.put("/{venue_id}", status_code=status.HTTP_200_OK)
 def update_venue(venue_id: int, venue_change: v_models.VenueUpdate,
                  db: DbSession, current_user: CurrentUser):
-    # TODO: Add admin check here
+    #Add admin check here
     updated_venue = service.update_venue(db, venue_id, venue_change)
     return v_models.VenueResponse(
         venue_id=updated_venue.venue_id,
