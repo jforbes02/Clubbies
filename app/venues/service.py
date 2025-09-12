@@ -6,29 +6,36 @@ import logging
 from typing import List
 
 def create_venue(db: Session, venue_data: v_models.VenueCreate) -> Venue:
-    existing = db.query(Venue).filter(
-        Venue.venue_name == venue_data.venue_name, Venue.address == venue_data.address
-    ).first()
+    try:
+        existing = db.query(Venue).filter(
+            Venue.venue_name == venue_data.venue_name, Venue.address == venue_data.address
+        ).first()
 
-    if existing:
-        raise HTTPException(status_code=400, detail="Venue already exists")
+        if existing:
+            raise HTTPException(status_code=400, detail="Venue already exists")
 
-    venue = Venue(
-        venue_name=venue_data.venue_name,
-        venue_type=venue_data.venue_type,
-        address=venue_data.address,
-        age_req=venue_data.age_req,
-        hours=venue_data.hours,
-        price=venue_data.price,
-        capacity=venue_data.capacity,
-        description=venue_data.description,
-    )
+        venue = Venue(
+            venue_name=venue_data.venue_name,
+            venue_type=venue_data.venue_type,
+            address=venue_data.address,
+            age_req=venue_data.age_req,
+            hours=venue_data.hours,
+            price=venue_data.price,
+            capacity=venue_data.capacity,
+            description=venue_data.description,
+        )
 
-    db.add(venue)
-    db.commit()
-    db.refresh(venue)
-
-    return venue
+        db.add(venue)
+        db.commit()
+        db.refresh(venue)
+        logging.info(f"Created venue: {venue.venue_name}")
+        return venue
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Failed to create venue: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create venue")
 
 def get_venue_by_id(db: Session, venue_id: int) -> Venue:
     venue = db.query(Venue).get(venue_id)
@@ -36,7 +43,7 @@ def get_venue_by_id(db: Session, venue_id: int) -> Venue:
         raise HTTPException(status_code=404, detail="Venue not found")
     return venue
 
-def update_venue(db: Session,venue_id: int, change_venue: v_models.VenueUpdate) -> None:
+def update_venue(db: Session, venue_id: int, change_venue: v_models.VenueUpdate) -> Venue:
     try:
         venue = get_venue_by_id(db, venue_id)
         update_data = change_venue.model_dump(exclude_unset=True)
@@ -44,20 +51,28 @@ def update_venue(db: Session,venue_id: int, change_venue: v_models.VenueUpdate) 
         for key, value in update_data.items():
             setattr(venue, key, value)
         db.commit()
+        db.refresh(venue)
         logging.info(f"Venue {venue.venue_name} updated")
+        return venue
     except HTTPException:
-        logging.error("could not find Venue")
-        raise HTTPException(status_code=400, detail="Venue not found")
+        raise
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Failed to update venue {venue_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update venue")
 
 def delete_venue(db: Session, venue_id: int) -> None:
     try:
-        venue = get_venue_by_id(db, venue_id) #sees if venue exists
+        venue = get_venue_by_id(db, venue_id)  # sees if venue exists
         db.delete(venue)
         db.commit()
-        logging.info(f"Venue {venue_id} deleted, ID: {venue_id}")
+        logging.info(f"Venue {venue.venue_name} deleted, ID: {venue_id}")
     except HTTPException:
-        logging.error("could not find Venue")
-        raise HTTPException(status_code=404, detail="Venue not found")
+        raise
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Failed to delete venue {venue_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete venue")
 
 
 # noinspection PyTypeChecker
@@ -72,8 +87,10 @@ def get_all_venues(db: Session, after_venue_id: int = None, limit: int = 20) -> 
         logging.info(f"Retrieved {len(venues)} venues")
         return venues
     except HTTPException:
-        logging.error(f"Error fetching venues")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise
+    except Exception as e:
+        logging.error(f"Error fetching venues: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch venues")
 
 
 # noinspection PyTypeChecker
@@ -84,12 +101,7 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
         if venue_name:
             query = query.filter(Venue.venue_name.ilike(f"%{venue_name}%"))
 
-        #capacity filters
-        if special_filter:
-            if special_filter.min_capacity:
-                query = query.filter(Venue.capacity >= special_filter.min_capacity)
-            if special_filter.max_capacity:
-                query = query.filter(Venue.capacity <= special_filter.max_capacity)
+        #have to in the future figure out capacity filtering.
 
         #hours open filters
         if special_filter.hours:
@@ -115,5 +127,7 @@ def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFil
         logging.info(f"Found {len(venues)} venues")
         return venues
     except HTTPException:
-        logging.error(f"could not find Venue's searched for")
-        raise HTTPException(status_code=500, detail="Search Failed")
+        raise
+    except Exception as e:
+        logging.error(f"Error searching venues: {str(e)}")
+        raise HTTPException(status_code=500, detail="Venue search failed")

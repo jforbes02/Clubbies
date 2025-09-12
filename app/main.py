@@ -9,8 +9,17 @@ from app.venues import controller as venues_controller
 from app.reviews import controller as reviews_controller
 from app.photo import controller as photo_controller
 from app.protection.middleware import setup_middleware
+from app.protection.rate_limiting import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.database import engine
+from app.models.models import Base
 
 load_dotenv()
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
 # Create FastAPI app instance
 app = FastAPI(
     title="Clubbies API", 
@@ -20,6 +29,10 @@ app = FastAPI(
 
 # Setup security middleware
 setup_middleware(app)
+
+# Setup rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Register all routers
 app.include_router(auth_controller.router)

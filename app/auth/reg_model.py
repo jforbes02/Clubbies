@@ -6,7 +6,7 @@ class CreateUser(BaseModel):
     username: str = Field(..., min_length=4, max_length=40)
     email: EmailStr = Field(...)
     password: str = Field(..., min_length=6, description="Must be at least 6 characters long")
-    age: int = Field(..., ge=18)
+    age: int = Field(..., ge=16)
 
 
 #returns token for authentication

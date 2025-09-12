@@ -15,10 +15,10 @@ from dotenv import load_dotenv
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 10
 
 #security setup
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
 bcrypt = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 #Passwording Functions (hash and verification)
@@ -63,22 +63,21 @@ def verify_token(token: str) -> reg_model.TokenData:
         user_id: str = payload.get("id")#gets user ID from ^^^
         return reg_model.TokenData(user_id=user_id) #Returns token Data
     except PyJWTError as e:
-        logging.warning(f"Failed authentication attempt for token {token}")
-        raise HTTPException from e
+        logging.warning(f"Failed authentication attempt - invalid token provided")
+        raise HTTPException(status_code=401, detail='Could not validate tokens') from e
 
 #user Registration
-# noinspection PyTypeChecker
 def register_user(db: Session, create_user: reg_model.CreateUser) -> None:
     """
     Registers a new user and hashes the password before storing
     """
-    existing_user = db.query(User).filter(User.username == create_user.username) | (User.email == create_user.email).first()
+    existing_user = db.query(User).filter((User.username == create_user.username) | (User.email == create_user.email)).first()
     if existing_user:
         logging.info(f"User already exists")
-    if existing_user.username == create_user.username:
-        raise HTTPException(status_code=400, detail="Username already exists")
-    elif existing_user.email == create_user.email:
-        raise HTTPException(status_code=400, detail="Email already exists")
+        if existing_user.username == create_user.username:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        elif existing_user.email == create_user.email:
+            raise HTTPException(status_code=400, detail="Email already exists")
 
     try:
         create_user_model = User(
@@ -109,6 +108,6 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
             db:Session) -> reg_model.Token:
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
-        raise HTTPException
+        raise HTTPException(status_code=401, detail='Incorrect username or password')
     token = create_access_token(user.username, user.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return reg_model.Token(access_token=token, token_type="bearer")

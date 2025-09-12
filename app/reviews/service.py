@@ -2,6 +2,7 @@ from fastapi import HTTPException
 
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
+from app.auth.service import CurrentUser
 from . import r_model
 from app.models.models import User, Venue, Review
 import logging
@@ -11,16 +12,6 @@ from typing import List
 # noinspection PyTypeChecker
 def create_review(db: Session, review_data: r_model.CreateReview, user_id: int) -> Review:
     try:
-        venue = db.query(Venue).filter(Venue.venue_id == review_data.venue_id).first()
-        if not venue:
-            logging.error(f"Venue {review_data.venue_id} does not exist")
-            raise HTTPException(status_code=404, detail="Review not found")
-
-        user = db.query(User).filter(User.user_id == user_id).first()
-        if not user:
-            logging.error(f"User {user_id} does not exist")
-            raise HTTPException(status_code=404, detail="User not found")
-
         # Check if user already reviewed this venue
         existing_review = db.query(Review).filter(
             Review.user_id == user_id,
@@ -40,12 +31,14 @@ def create_review(db: Session, review_data: r_model.CreateReview, user_id: int) 
         
         db.add(review)
         db.commit()
-        db.refresh(review)
 
+        # Refresh with relationships loaded
+        db.refresh(review)
         review_rel = db.query(Review).options(
             joinedload(Review.user), 
             joinedload(Review.venue)
         ).filter(Review.review_id == review.review_id).first()
+        
         logging.info(f"Review created successfully by user {user_id} for venue {review_data.venue_id}")
         return review_rel
         
@@ -60,11 +53,11 @@ def create_review(db: Session, review_data: r_model.CreateReview, user_id: int) 
 # noinspection PyTypeChecker
 def get_reviews_by_venue(db: Session, venue_id: int, after_review_id: int = None, limit: int = 20) -> List[Review]:
     try:
-        venue = db.query(Venue).filter(Venue.venue_id == venue_id).first()
-        if not venue:
-            raise HTTPException(status_code=404, detail="Venue not found")
-            
-        query = db.query(Review).filter(Review.venue_id == venue_id)
+        # Let foreign key constraint handle venue validation
+        query = db.query(Review).options(
+            joinedload(Review.user),
+            joinedload(Review.venue)
+        ).filter(Review.venue_id == venue_id)
         
         if after_review_id:
             query = query.filter(Review.review_id > after_review_id)
@@ -83,11 +76,11 @@ def get_reviews_by_venue(db: Session, venue_id: int, after_review_id: int = None
 # noinspection PyTypeChecker
 def get_reviews_by_user(db: Session, user_id: int, after_review_id: int = None, limit: int = 20) -> List[Review]:
     try:
-        user = db.query(User).filter(User.user_id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-            
-        query = db.query(Review).filter(Review.user_id == user_id)
+        # Let foreign key constraint handle user validation  
+        query = db.query(Review).options(
+            joinedload(Review.user),
+            joinedload(Review.venue)
+        ).filter(Review.user_id == user_id)
         
         if after_review_id:
             query = query.filter(Review.review_id > after_review_id)
@@ -103,7 +96,7 @@ def get_reviews_by_user(db: Session, user_id: int, after_review_id: int = None, 
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview, user_id: int):
+def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview, user_id: int) -> Review:
     try:
         review = db.query(Review).filter(Review.review_id == review_id).first()
         if not review:
@@ -111,6 +104,10 @@ def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview
             
         if review.user_id != user_id:
             raise HTTPException(status_code=403, detail="Not authorized to update this review")
+        
+        # Check if at least one field is being updated
+        if review_data.rating is None and review_data.review_text is None:
+            raise HTTPException(status_code=400, detail="At least one field must be provided for update")
             
         if review_data.rating is not None:
             review.rating = review_data.rating
@@ -120,7 +117,14 @@ def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview
         db.commit()
         db.refresh(review)
         
+        # Return review with relationships loaded
+        updated_review = db.query(Review).options(
+            joinedload(Review.user),
+            joinedload(Review.venue)
+        ).filter(Review.review_id == review_id).first()
+        
         logging.info(f"Review {review_id} updated successfully by user {user_id}")
+        return updated_review
     except HTTPException:
         raise
     except Exception as e:
@@ -129,7 +133,7 @@ def update_review(db: Session, review_id: int, review_data: r_model.UpdateReview
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-def delete_review(db: Session, review_id: int, user_id: int) -> bool:
+def delete_review(db: Session, review_id: int, user_id: int) -> None:
     try:
         review = db.query(Review).filter(Review.review_id == review_id).first()
         if not review:
@@ -142,7 +146,6 @@ def delete_review(db: Session, review_id: int, user_id: int) -> bool:
         db.commit()
         
         logging.info(f"Review {review_id} deleted successfully by user {user_id}")
-        return True
         
     except HTTPException:
         raise

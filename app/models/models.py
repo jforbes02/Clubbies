@@ -37,7 +37,8 @@ class Photo(Base):
     img_url = Column(String(500), nullable=False)
     caption = Column(String(255))
     uploaded_at = Column(DateTime, nullable=False)
-    file_size=Column(Integer)
+    file_size = Column(Integer)
+    content_type = Column(String(30), nullable=False)
     #relationships
     #each photo has a user with a user_id
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
