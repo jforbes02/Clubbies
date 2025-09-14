@@ -3,7 +3,7 @@ from app.core.database import DbSession
 from app.auth.service import CurrentUser
 from . import v_models
 from . import service
-from ..models.models import Venue
+from ..models.models import Venue, User
 from typing import List, Optional
 
 router = APIRouter(
@@ -16,7 +16,7 @@ router = APIRouter(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: CurrentUser):
     # Admin-only venue creation
-    user = db.query(Venue).join(User).filter(User.user_id == current_user.get_id()).first()
+    user = db.query(User).filter(User.user_id == current_user.get_id()).first()
     # Add proper admin role system
 
     venue = service.create_venue(db, venue_data)

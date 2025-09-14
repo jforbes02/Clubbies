@@ -134,12 +134,6 @@ def get_photos_by_user(db: Session, user_id: int, after_photo_id: int = None, li
         logging.error(f"Error fetching photos for user {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-def get_photo_by_id(db: Session, picture_id: int) -> Photo:
-    photo = db.query(Photo).get(picture_id)
-    if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
-    return photo
-
 def delete_photo(db: Session, photo_id: int) -> None:
     try:
         photo = get_photo_by_id(db, photo_id)
