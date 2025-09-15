@@ -49,7 +49,7 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta) -
     encode = {
         'sub': username,
         'id': str(user_id), #converts UUID into a string for JSON
-        'exp': datetime.now(datetime.timezone.utc) + expires_delta, #expiration time
+        'exp': datetime.utcnow() + expires_delta, #expiration time
     }
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM) #makes and returns signed JWT
 

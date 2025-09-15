@@ -12,7 +12,7 @@ router = APIRouter(
 
 
 # noinspection PyTypeHints
-@router.get("/me", response_model=user_model.UserResponse)
+@router.get("/{user_id}", response_model=user_model.UserResponse)
 def get_current_user(current_user: CurrentUser, db: DbSession):
     user = service.get_current_user_profile(db, current_user)
     return user_model.UserResponse(

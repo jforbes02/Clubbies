@@ -3,7 +3,8 @@ from fastapi import HTTPException
 from . import v_models
 from app.models.models import Venue
 import logging
-from typing import List
+from typing import List, Optional
+
 
 def create_venue(db: Session, venue_data: v_models.VenueCreate) -> Venue:
     try:
@@ -94,7 +95,7 @@ def get_all_venues(db: Session, after_venue_id: int = None, limit: int = 20) -> 
 
 
 # noinspection PyTypeChecker
-def search_venue(db: Session, venue_name: str, special_filter: v_models.VenueFilter, after_venue_id: int = None, limit: int = 20) -> List[Venue]:
+def search_venue(db: Session, venue_name: Optional[str], special_filter: v_models.VenueFilter, after_venue_id: int = None, limit: int = 20) -> List[Venue]:
     try:
         query = db.query(Venue)
 
