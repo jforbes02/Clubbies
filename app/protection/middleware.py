@@ -28,7 +28,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "script-src 'self'; "
                 "style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data: https:; "
-                "font-src 'self'; "
                 "connect-src 'self'"
             )
         
@@ -59,10 +58,10 @@ def setup_middleware(app: FastAPI) -> None:
         raise ValueError("SECRET_KEY environment variable is required")
     
     app.add_middleware(
-        SessionMiddleware, 
-        secret_key=secret_key, 
+        SessionMiddleware,
+        secret_key=secret_key,
         https_only=os.getenv("ENVIRONMENT") == 'production',
-        same_site='strict'
+        same_site='lax' if os.getenv("MOBILE_DEV") == "true" else 'strict'
     )
     
     # CORS - Mobile app friendly configuration
@@ -82,17 +81,8 @@ def setup_middleware(app: FastAPI) -> None:
             allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
     else:
         # Development: allow localhost and mobile development
-        allowed_origins = [
-            "http://localhost:3000",    # React dev
-            "http://127.0.0.1:3000",   # React dev
-            "http://localhost:8080",    # Vue/other dev
-            "http://127.0.0.1:8080",   # Vue/other dev
-            # Mobile development - allow all for easier testing
-        ]
-        # For mobile development, might need to allow all origins
-        if os.getenv("MOBILE_DEV") == "true":
-            allowed_origins = ["*"]
-    
+        allowed_origins = ['*']
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,

@@ -35,7 +35,13 @@ def authenticate_user(username: str, password: str, db: Session) -> User | bool:
     Checks if the username and password are valid
     returns Object if valid, false if not
     """
-    user = db.query(User).filter(User.username == username).first() #find user by unique username
+    # Try to find user by email first (since frontend sends email as username)
+    user = db.query(User).filter(User.email == username).first()
+
+    # If not found by email, try by username
+    if not user:
+        user = db.query(User).filter(User.username == username).first()
+
     if not user or not verify_password(password, user.password_hashed): #check if exists and password matches
         logging.warning(f"Failed authentication attempt for user {username}")
         return False
