@@ -160,12 +160,6 @@ export default function AuthScreen({ navigation }) {
                         </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.testButton}
-                        onPress={handleTestAPI}
-                    >
-                        <Text style={styles.testButtonText}>🧪 Test API Connection</Text>
-                    </TouchableOpacity>
                 </View>
             </View>
         </KeyboardAvoidingView>
