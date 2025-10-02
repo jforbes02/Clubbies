@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 
 export default function AuthScreen({ navigation }) {
     const [isLogin, setIsLogin] = useState(true);
@@ -9,21 +8,23 @@ export default function AuthScreen({ navigation }) {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [username, setUsername] = useState('');
     const [age, setAge] = useState('');
+    const [loginUsername, setLoginUsername] = useState('');
 
     const { login, register, isLoading } = useAuth();
 
     const validateForm = () => {
-        if (!email.trim()) {
-            Alert.alert('Error', 'Email is required');
-            return false;
-        }
-        if (!password.trim()) {
-            Alert.alert('Error', 'Password is required');
-            return false;
-        }
-        if (!isLogin) {
+        if (isLogin) {
+            if (!loginUsername.trim()) {
+                Alert.alert('Error', 'Username is required');
+                return false;
+            }
+        } else {
             if (!username.trim()) {
                 Alert.alert('Error', 'Username is required');
+                return false;
+            }
+            if (!email.trim()) {
+                Alert.alert('Error', 'Email is required');
                 return false;
             }
             if (!age.trim() || parseInt(age) < 16) {
@@ -39,6 +40,10 @@ export default function AuthScreen({ navigation }) {
                 return false;
             }
         }
+        if (!password.trim()) {
+            Alert.alert('Error', 'Password is required');
+            return false;
+        }
         return true;
     };
 
@@ -48,7 +53,7 @@ export default function AuthScreen({ navigation }) {
         try {
             let result;
             if (isLogin) {
-                result = await login(email.trim(), password);
+                result = await login(loginUsername.trim(), password);
             } else {
                 result = await register({
                     username: username.trim(),
@@ -82,26 +87,36 @@ export default function AuthScreen({ navigation }) {
                 </Text>
 
                 <View style={styles.form}>
-                    {!isLogin && (
+                    {isLogin ? (
                         <TextInput
                             style={styles.input}
                             placeholder="Username"
                             placeholderTextColor="#666"
-                            value={username}
-                            onChangeText={setUsername}
+                            value={loginUsername}
+                            onChangeText={setLoginUsername}
                             autoCapitalize="none"
                         />
+                    ) : (
+                        <>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Username"
+                                placeholderTextColor="#666"
+                                value={username}
+                                onChangeText={setUsername}
+                                autoCapitalize="none"
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Email"
+                                placeholderTextColor="#666"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+                        </>
                     )}
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        placeholderTextColor="#666"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
 
                     <TextInput
                         style={styles.input}

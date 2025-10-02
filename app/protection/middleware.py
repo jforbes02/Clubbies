@@ -44,7 +44,7 @@ def setup_middleware(app: FastAPI) -> None:
     
     # Trusted Host Protection
     #Allows requests from specific domains
-    allowed_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    allowed_hosts = os.getenv("ALLOWED_HOSTS").split(",")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     
     # GZIP compression (reduces bandwith)
