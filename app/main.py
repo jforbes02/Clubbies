@@ -23,7 +23,7 @@ Base.metadata.create_all(bind=engine)
 # Create FastAPI app instance
 app = FastAPI(
     title="Clubbies API", 
-    version="0.1.0",
+    version="0.1",
     description="A nightlife venue review and photo sharing API"
 )
 
@@ -44,7 +44,7 @@ app.include_router(photo_controller.router)
 # Health check endpoint
 @app.get("/")
 async def root():
-    return {"message": "Clubbies API is running!", "version": "0.1.0"}
+    return {"message": "Clubbies API is running!", "version": "0.1"}
 
 @app.get("/health")
 async def health_check():

@@ -15,11 +15,10 @@ router = APIRouter(
 
 
 # noinspection PyTypeHints
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=reg_model.Token)
 @limiter.limit("5/hour")
 async def register_user(request: Request, create_user_request:reg_model.CreateUser, db:DbSession):
-    service.register_user(db, create_user_request)
-    return {"message": "User registered successfully", "username": create_user_request.username}
+    return service.register_user(db, create_user_request)
 
 
 # noinspection PyTypeHints

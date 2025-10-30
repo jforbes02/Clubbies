@@ -1,6 +1,12 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'dart:ui';
-
+import '../services/auth_service.dart';
+import '../services/storage_service.dart';
+import '../models/auth.dart';
+final authService = AuthService();
+final storageService = StorageService();
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -10,6 +16,7 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin{
   bool isLogin = true;
+  bool isLoading = false;
   late AnimationController _controller;
   late Animation<double> _fanimation;
 
@@ -61,7 +68,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.lightBlue.shade200,
+                Colors.purple.shade200,
                 Colors.lightBlue.shade600,
               ],
             ),
@@ -88,9 +95,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           ),
                           SizedBox(height:8),
                           Text(
-                            isLogin ? 'Welcome Back'  : 'Join the Night',
+                            isLogin ? 'Welcome Back' : 'Join the Night',
                             style: TextStyle(
-                              fontSize:18,
+                              fontSize: 18,
                               color: Colors.white.withOpacity(0.9),
                               fontWeight: FontWeight.w300,
                             ),
@@ -98,7 +105,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         ],
                         ),
                     ),
-                    SizedBox(height:48),
+                    SizedBox(height: 8),
                     FadeTransition(
                       opacity: _fanimation,
                       child: ClipRRect(
@@ -153,15 +160,55 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                 ],
                                 SizedBox(height: isLogin ? 24: 0),
                                 _buildGlassButton(
-                                  onPressed: () {
+                                  onPressed: () async{
                                     if (_formKey.currentState!.validate()) {
-                                      // Process data.
-                                      print(isLogin ? 'Logging in...' : 'Registering...');
+                                      setState(() => isLoading = true);
+                                      try {
+                                        AuthToken token;
+                                        if (isLogin){
+                                          token = await authService.login(
+                                            username: _usernameController.text,
+                                            password: _passwordController.text,
+                                          );
+                                        } else{
+                                          token = await authService.register(
+                                            username: _usernameController.text,
+                                            email: _emailController.text,
+                                            password: _passwordController.text,
+                                            age: int.parse(_ageController.text),
+                                          );
+                                        }
+                                        await storageService.saveToken(token.accessToken, token.tokenType);
+
+                                        if (mounted){
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(isLogin ? '✅ Login Successful!' : '✅ Registration Successful!'),
+                                              backgroundColor: Colors.green,
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        if (mounted){
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('❌ Error: ${e.toString()}'),
+                                              backgroundColor: Colors.red,
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                          );
+                                        }
+                                      } finally {
+                                        if (mounted) setState(() => isLoading = false);
+                                      }
+
                                     }
                                   },
                                   text: isLogin ? 'Login' : 'Create Account',
+                                  isLoading: isLoading,
                                 ),
-                                SizedBox(height: 16),
+                                SizedBox(height: 10),
                                 TextButton(
                                   onPressed: toggleAuth,
                                   child: Text(
@@ -239,8 +286,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     }
 
     Widget _buildGlassButton({
-      required VoidCallback onPressed,
+      required Future<void> Function() onPressed,
       required String text,
+      bool isLoading = false,
     }) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(25),
@@ -263,20 +311,29 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               ),
             ),
             child: ElevatedButton(
-              onPressed: onPressed,
+              onPressed: isLoading ? null : onPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 padding: EdgeInsets.symmetric(vertical: 16),
               ),
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: isLoading
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      text,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ),
