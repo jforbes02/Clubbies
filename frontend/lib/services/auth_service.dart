@@ -8,6 +8,7 @@ class AuthService {
   //auth API endpoints
   static const String _registerEndpoint = '/auth/register';
   static const String _loginEndpoint = '/auth/login';
+  static const String _healthEndpoint = '/health';
 
   // register function
   Future<AuthToken> register({
@@ -35,7 +36,18 @@ class AuthService {
       return AuthToken.fromJson(responseData);
     } else {
       final errorBody = jsonDecode(response.body);
-      throw Exception('Failed to register: ${errorBody['detail']}');
+      // Handle both simple detail messages and validation error arrays
+      String errorMessage = 'Failed to register';
+      if (errorBody['detail'] is String) {
+        errorMessage = errorBody['detail'];
+      } else if (errorBody['detail'] is List) {
+        // Format validation errors from FastAPI
+        final errors = (errorBody['detail'] as List)
+            .map((e) => '${e['loc'].last}: ${e['msg']}')
+            .join(', ');
+        errorMessage = errors;
+      }
+      throw Exception(errorMessage);
     }
   }
 
@@ -61,6 +73,36 @@ class AuthService {
       final errorBody = jsonDecode(response.body);
       throw Exception('Failed to login: ${errorBody['detail']}');
   }
+  }
+
+  // test API connection
+  Future<Map<String, dynamic>> testConnection() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$_healthEndpoint'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'API connection successful!',
+          'status': response.statusCode,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'API returned status: ${response.statusCode}',
+          'status': response.statusCode,
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Connection failed: ${e.toString()}',
+        'status': 0,
+      };
+    }
   }
 
 }

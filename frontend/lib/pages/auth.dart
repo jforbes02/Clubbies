@@ -17,6 +17,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin{
   bool isLogin = true;
   bool isLoading = false;
+  bool isTestingConnection = false;
   late AnimationController _controller;
   late Animation<double> _fanimation;
 
@@ -105,7 +106,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         ],
                         ),
                     ),
-                    SizedBox(height: 8),
+                    SizedBox(height: 24),
                     FadeTransition(
                       opacity: _fanimation,
                       child: ClipRRect(
@@ -131,7 +132,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                     label: 'Username',
                                     icon: Icons.person_outline,
                                   ),
-                                  SizedBox(height:16),
+                                  SizedBox(height:12),
                                 
                                   if(!isLogin) ...[
                                     _buildGlassTextField(
@@ -140,7 +141,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                       icon: Icons.email_outlined,
                                       keyboardType: TextInputType.emailAddress,
                                     ),
-                                    SizedBox(height: 16),
+                                    SizedBox(height: 12),
                                   ],
                                   _buildGlassTextField(
                                     controller: _passwordController,
@@ -148,7 +149,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                     icon: Icons.lock_outline,
                                     obscureText: true,
                                   ),
-                                  SizedBox(height: 16),
+                                  SizedBox(height: 12),
                                   if(!isLogin) ...[
                                     _buildGlassTextField(
                                       controller: _ageController,
@@ -156,9 +157,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                       icon: Icons.calendar_today_outlined,
                                       keyboardType: TextInputType.number,
                                     ),
-                                    SizedBox(height: 24),
+                                    SizedBox(height: 16),
                                 ],
-                                SizedBox(height: isLogin ? 24: 0),
+                                SizedBox(height: isLogin ? 16: 0),
                                 _buildGlassButton(
                                   onPressed: () async{
                                     if (_formKey.currentState!.validate()) {
@@ -172,10 +173,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                           );
                                         } else{
                                           token = await authService.register(
-                                            username: _usernameController.text,
-                                            email: _emailController.text,
-                                            password: _passwordController.text,
-                                            age: int.parse(_ageController.text),
+                                            username: _usernameController.text.trim(),
+                                            email: _emailController.text.trim(),
+                                            password: _passwordController.text.trim(),
+                                            age: int.parse(_ageController.text.trim()),
                                           );
                                         }
                                         await storageService.saveToken(token.accessToken, token.tokenType);
@@ -203,12 +204,22 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                         if (mounted) setState(() => isLoading = false);
                                       }
 
+                                    } else {
+                                      if (mounted){
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('❌ Please fill in all fields correctly.'),
+                                            backgroundColor: Colors.red,
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
                                     }
                                   },
                                   text: isLogin ? 'Login' : 'Create Account',
                                   isLoading: isLoading,
                                 ),
-                                SizedBox(height: 10),
+                                SizedBox(height: 8),
                                 TextButton(
                                   onPressed: toggleAuth,
                                   child: Text(
@@ -217,11 +228,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                         :"Already have an account? Login",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 14,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w500,
-                                    ), 
+                                    ),
                                   ),
                                 ),
+                                SizedBox(height: 8),
+                                _buildTestConnectionButton(),
                               ],),
                             ),
                           ),
@@ -273,8 +286,27 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) {
+                if (value == null || value.trim().isEmpty) {
                   return 'Please enter your $label';
+                }
+                // Additional validation for specific fields
+                if (label == 'Username' && value.trim().length < 4) {
+                  return 'Username must be at least 4 characters';
+                }
+                if (label == 'Password' && value.trim().length < 6) {
+                  return 'Password must be at least 6 characters';
+                }
+                if (label == 'Age') {
+                  final age = int.tryParse(value.trim());
+                  if (age == null) {
+                    return 'Please enter a valid age';
+                  }
+                  if (age < 16) {
+                    return 'You must be at least 16 years old';
+                  }
+                }
+                if (label == 'Email' && !value.contains('@')) {
+                  return 'Please enter a valid email';
                 }
                 return null;
               },
@@ -335,6 +367,53 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       ),
                     ),
             ),
+          ),
+        ),
+      );
+    }
+
+    Widget _buildTestConnectionButton() {
+      return OutlinedButton.icon(
+        onPressed: isTestingConnection ? null : () async {
+          setState(() => isTestingConnection = true);
+          try {
+            final result = await authService.testConnection();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result['message']),
+                  backgroundColor: result['success'] ? Colors.green : Colors.red,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          } finally {
+            if (mounted) setState(() => isTestingConnection = false);
+          }
+        },
+        icon: isTestingConnection
+            ? SizedBox(
+                height: 14,
+                width: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Icon(Icons.wifi_find, size: 18, color: Colors.white),
+        label: Text(
+          'Test API Connection',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Colors.white.withOpacity(0.5), width: 1.5),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
       );
