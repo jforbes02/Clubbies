@@ -5,6 +5,7 @@ import 'dart:ui';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../models/auth.dart';
+import 'home.dart';
 final authService = AuthService();
 final storageService = StorageService();
 class AuthScreen extends StatefulWidget {
@@ -132,7 +133,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                     label: 'Username',
                                     icon: Icons.person_outline,
                                   ),
-                                  SizedBox(height:12),
+                                  SizedBox(height:8),
                                 
                                   if(!isLogin) ...[
                                     _buildGlassTextField(
@@ -141,7 +142,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                       icon: Icons.email_outlined,
                                       keyboardType: TextInputType.emailAddress,
                                     ),
-                                    SizedBox(height: 12),
+                                    SizedBox(height: 8),
                                   ],
                                   _buildGlassTextField(
                                     controller: _passwordController,
@@ -149,7 +150,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                     icon: Icons.lock_outline,
                                     obscureText: true,
                                   ),
-                                  SizedBox(height: 12),
+                                  SizedBox(height: 8),
                                   if(!isLogin) ...[
                                     _buildGlassTextField(
                                       controller: _ageController,
@@ -157,7 +158,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                       icon: Icons.calendar_today_outlined,
                                       keyboardType: TextInputType.number,
                                     ),
-                                    SizedBox(height: 16),
+                                    SizedBox(height: 8),
                                 ],
                                 SizedBox(height: isLogin ? 16: 0),
                                 _buildGlassButton(
@@ -187,6 +188,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                               content: Text(isLogin ? '✅ Login Successful!' : '✅ Registration Successful!'),
                                               backgroundColor: Colors.green,
                                               duration: Duration(seconds: 2),
+                                            ),
+                                          );
+
+                                          // Navigate to HomePage
+                                          Navigator.of(context).pushReplacement(
+                                            MaterialPageRoute(
+                                              builder: (context) => const HomePage(),
                                             ),
                                           );
                                         }
