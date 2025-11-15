@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math';
+import 'profile.dart';
+import 'search.dart';
+import 'feed.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -79,9 +82,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _onBubbleTap(String bubbleName) {
-    final controller = _bubbleControllers[bubbleName]!;
-    controller.forward().then((_) => controller.reverse());
-
     // Show a snackbar for now (placeholder for future navigation)
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -161,18 +161,36 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           icon: Icons.home_rounded,
                           label: 'Home',
                           color: Colors.blue.shade300,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const FeedPage()),
+                            );
+                          },
                         ),
                         _buildAnimatedBubble(
                           name: 'search',
                           icon: Icons.search_rounded,
                           label: 'Search',
                           color: Colors.purple.shade300,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const SearchPage()),
+                            );
+                          }
                         ),
                         _buildAnimatedBubble(
                           name: 'profile',
                           icon: Icons.person_rounded,
                           label: 'Profile',
                           color: Colors.pink.shade300,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ProfilePage()),
+                            );
+                          },
                         ),
                         _buildAnimatedBubble(
                           name: 'reviews',
@@ -197,6 +215,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required IconData icon,
     required String label,
     required Color color,
+    VoidCallback? onPressed,
   }) {
     return ScaleTransition(
       scale: _bubbleAnimations[name]!,
@@ -209,7 +228,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           final morphY = 35 + (5 * cos(wiggle * 2 * pi + 1));
 
           return GestureDetector(
-            onTap: () => _onBubbleTap(name),
+            onTap: () {
+              final controller = _bubbleControllers[name]!;
+              controller.forward().then((_) => controller.reverse());
+
+              if (onPressed != null) {
+                onPressed();
+              } else {
+                _onBubbleTap(name);
+              }
+            },
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
