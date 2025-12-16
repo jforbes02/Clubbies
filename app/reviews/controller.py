@@ -18,12 +18,21 @@ router = APIRouter(
 def upload_review(db: DbSession,
                   current_user: CurrentUser,
                   venue_id: int = Form(...),
-                  rating: float = Form(...),
-                  review_text: Optional[str] = Form(None)):
+                  rating: Optional[float] = Form(None),
+                  review_text: Optional[str] = Form(None),
+                  parent_review_id: Optional[int] = Form(None)):
     current_user_id = current_user.get_id()
-    review_data = r_model.CreateReview(venue_id=venue_id, rating=rating, review_text=review_text)
+    review_data = r_model.CreateReview(
+        venue_id=venue_id,
+        rating=rating,
+        review_text=review_text,
+        parent_review_id=parent_review_id
+    )
 
     review = service.create_review(db, review_data, current_user_id)
+
+    # Get reply count
+    reply_count = len(review.replies) if hasattr(review, 'replies') else 0
 
     return r_model.ReviewResponse(
         review_id=review.review_id,
@@ -33,7 +42,9 @@ def upload_review(db: DbSession,
         venue_id=review.venue_id,
         review_text=review.review_text,
         username=review.user.username,
-        venue_name=review.venue.venue_name
+        venue_name=review.venue.venue_name,
+        parent_review_id=review.parent_review_id,
+        reply_count=reply_count
     )
 
 
@@ -66,10 +77,33 @@ def get_venue_reviews(db: DbSession, venue_id: int, after_review_id: Optional[in
             venue_id=review.venue_id,
             review_text=review.review_text,
             username=review.user.username,
-            venue_name=review.venue.venue_name
+            venue_name=review.venue.venue_name,
+            parent_review_id=review.parent_review_id,
+            reply_count=len(review.replies) if hasattr(review, 'replies') else 0
         ) for review in reviews],
         "has_more": len(reviews) == limit,
         'next_cursor': reviews[-1].review_id if reviews else None
+    }
+
+
+# noinspection PyTypeHints
+@router.get("/reviews/{review_id}/replies", status_code=status.HTTP_200_OK)
+def get_review_replies(db: DbSession, review_id: int, limit: int = 50):
+    replies = service.get_replies_by_review(db, review_id, limit)
+    return {
+        'replies': [r_model.ReviewResponse(
+            review_id=reply.review_id,
+            rating=reply.rating,
+            created_at=reply.created_at,
+            user_id=reply.user_id,
+            venue_id=reply.venue_id,
+            review_text=reply.review_text,
+            username=reply.user.username,
+            venue_name=reply.venue.venue_name,
+            parent_review_id=reply.parent_review_id,
+            reply_count=0  # Replies don't have replies
+        ) for reply in replies],
+        "total": len(replies)
     }
 
 
