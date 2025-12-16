@@ -1,4 +1,4 @@
-# clubbbies_frontend
+# clubbies_frontend
 
 A new Flutter project.
 
