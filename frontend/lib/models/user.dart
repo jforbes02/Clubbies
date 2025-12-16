@@ -3,7 +3,7 @@ class User {
   final int userId;
   final String username;
   final String email;
-  final String age;
+  final int age;
 
   User({
     required this.userId,
@@ -14,7 +14,7 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json){
     return User(
-      userId: json['userId'],
+      userId: json['user_id'],
       username: json['username'],
       email: json['email'],
       age: json['age'],
@@ -23,7 +23,7 @@ class User {
 
   Map<String, dynamic> toJson() {
     return {
-      'userId': userId,
+      'user_id': userId,
       'username': username,
       'email': email,
       'age': age,

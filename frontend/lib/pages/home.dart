@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math';
-import 'profile.dart';
-import 'search.dart';
-import 'feed.dart';
+import 'main_container.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -164,7 +162,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const FeedPage()),
+                              MaterialPageRoute(builder: (context) => const MainContainer(initialIndex: 0)),
                             );
                           },
                         ),
@@ -176,7 +174,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const SearchPage()),
+                              MaterialPageRoute(builder: (context) => const MainContainer(initialIndex: 1)),
                             );
                           }
                         ),
@@ -188,7 +186,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const ProfilePage()),
+                              MaterialPageRoute(builder: (context) => const MainContainer(initialIndex: 2)),
                             );
                           },
                         ),

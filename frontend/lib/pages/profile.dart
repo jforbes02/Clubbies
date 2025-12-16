@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'dart:math';
+import '../models/user.dart';
+import '../services/user_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -9,228 +10,158 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin {
-  int _selectedIndex = 1; // Start on Profile tab
-  late AnimationController _wiggleController;
-  late Animation<double> _wiggleAnimation;
+class _ProfilePageState extends State<ProfilePage> {
+  final UserService _userService = UserService();
+  User? _currentUser;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-
-    // Wiggle animation for navbar
-    _wiggleController = AnimationController(
-      duration: const Duration(milliseconds: 3000),
-      vsync: this,
-    );
-    _wiggleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _wiggleController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    // Start the wiggle animation and loop it
-    _wiggleController.repeat();
+    // Load user profile
+    _loadUserProfile();
   }
 
-  @override
-  void dispose() {
-    _wiggleController.dispose();
-    super.dispose();
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final user = await _userService.getCurrentUserProfile();
+      setState(() {
+        _currentUser = user;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.purple.shade200,
-              Colors.purple.shade400,
-              Colors.purple.shade600,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header with username and menu
-                      _buildHeader(),
-                      const SizedBox(height: 20),
-
-                      // Profile info section
-                      _buildProfileInfo(),
-                      const SizedBox(height: 20),
-
-                      // Edit Profile button
-                      _buildEditProfileButton(),
-                      const SizedBox(height: 24),
-
-                      // Story Highlights
-                      _buildStoryHighlights(),
-                      const SizedBox(height: 24),
-
-                      // Bio section
-                      _buildBioSection(),
-                      const SizedBox(height: 80), // Add space for navbar
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.purple.shade200,
+            Colors.purple.shade400,
+            Colors.purple.shade600,
+          ],
         ),
       ),
-      bottomNavigationBar: _buildWigglyNavBar(),
-    );
-  }
+      child: SafeArea(
+        child: _isLoading
+            ? _buildLoadingState()
+            : _errorMessage != null
+                ? _buildErrorState()
+                : CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header with username and menu
+                              _buildHeader(),
+                              const SizedBox(height: 20),
 
-  Widget _buildWigglyNavBar() {
-    return AnimatedBuilder(
-      animation: _wiggleAnimation,
-      builder: (context, child) {
-        final wiggle = _wiggleAnimation.value;
+                              // Profile info section
+                              _buildProfileInfo(),
+                              const SizedBox(height: 20),
 
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.purple.shade400,
-                Colors.purple.shade600,
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, -5),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(
-                      index: 0,
-                      icon: Icons.home_rounded,
-                      label: 'Home',
-                      wiggleOffset: 0,
-                      wiggle: wiggle,
-                    ),
-                    _buildNavItem(
-                      index: 1,
-                      icon: Icons.search_rounded,
-                      label: 'Search',
-                      wiggleOffset: 0.33,
-                      wiggle: wiggle,
-                    ),
-                    _buildNavItem(
-                      index: 2,
-                      icon: Icons.person_rounded,
-                      label: 'Profile',
-                      wiggleOffset: 0.66,
-                      wiggle: wiggle,
-                    ),
-                    _buildNavItem(
-                      index: 3,
-                      icon: Icons.star_rounded,
-                      label: 'Reviews',
-                      wiggleOffset: 1.0,
-                      wiggle: wiggle,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+                              // Edit Profile button
+                              _buildEditProfileButton(),
+                              const SizedBox(height: 24),
 
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required String label,
-    required double wiggleOffset,
-    required double wiggle,
-  }) {
-    final isSelected = _selectedIndex == index;
+                              // Story Highlights
+                              _buildStoryHighlights(),
+                              const SizedBox(height: 24),
 
-    // Create wiggle effect using sin/cos
-    final wiggleAmount = 3.0;
-    final offsetY = sin((wiggle + wiggleOffset) * 2 * pi) * wiggleAmount;
-    final scale = 1.0 + (cos((wiggle + wiggleOffset) * 2 * pi) * 0.05);
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-        // TODO: Navigate to different pages
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label tapped!'),
-            duration: const Duration(milliseconds: 500),
-          ),
-        );
-      },
-      child: Transform.translate(
-        offset: Offset(0, offsetY),
-        child: Transform.scale(
-          scale: scale,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: isSelected
-                ? BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  )
-                : null,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.6),
-                  size: isSelected ? 28 : 24,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.6),
-                    fontSize: isSelected ? 12 : 10,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              // Bio section
+                              _buildBioSection(),
+                              const SizedBox(height: 80), // Add space for navbar
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Loading profile...',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.white,
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading profile',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Unknown error occurred',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadUserProfile,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.purple.shade600,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -240,9 +171,9 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'username',
-          style: TextStyle(
+        Text(
+          _currentUser?.username ?? 'username',
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -431,9 +362,9 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Full Name',
-                style: TextStyle(
+              Text(
+                _currentUser?.username ?? 'Full Name',
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -441,7 +372,8 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
               ),
               const SizedBox(height: 8),
               Text(
-                '✨ Your bio goes here\n📍 Location\n🔗 yourwebsite.com',
+                '📧 ${_currentUser?.email ?? 'email@example.com'}\n'
+                '🎂 Age: ${_currentUser?.age ?? 'N/A'}',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withValues(alpha: 0.95),

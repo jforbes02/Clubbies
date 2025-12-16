@@ -4,7 +4,6 @@ from . import user_model
 from app.models.models import User
 from app.auth.service import verify_password, get_password_hash, CurrentUser
 import logging
-from typing import List
 
 
 def get_user_by_id(db: Session, user_id: int) -> User:

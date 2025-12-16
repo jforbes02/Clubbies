@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'dart:math';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -9,10 +8,7 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
-  int _selectedIndex = 1; // Search tab selected
-  late AnimationController _wiggleController;
-  late Animation<double> _wiggleAnimation;
+class _SearchPageState extends State<SearchPage> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchType = 'Venues'; // 'Venues' or 'People'
@@ -26,73 +22,50 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   String? _selectedHours;
 
   @override
-  void initState() {
-    super.initState();
-
-    // Wiggle animation for navbar
-    _wiggleController = AnimationController(
-      duration: const Duration(milliseconds: 3000),
-      vsync: this,
-    );
-    _wiggleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _wiggleController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _wiggleController.repeat();
-  }
-
-  @override
   void dispose() {
-    _wiggleController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.purple.shade200,
-              Colors.purple.shade400,
-              Colors.purple.shade600,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
-              const SizedBox(height: 16),
-
-              // Search type toggle
-              _buildSearchTypeToggle(),
-              const SizedBox(height: 16),
-
-              // Search bar
-              _buildSearchBar(),
-              const SizedBox(height: 16),
-
-              // Filters (if shown)
-              if (_showFilters && _searchType == 'Venues') _buildFilters(),
-
-              // Results
-              Expanded(
-                child: _buildResults(),
-              ),
-            ],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.purple.shade200,
+            Colors.purple.shade400,
+            Colors.purple.shade600,
+          ],
         ),
       ),
-      bottomNavigationBar: _buildWigglyNavBar(),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            _buildHeader(),
+            const SizedBox(height: 16),
+
+            // Search type toggle
+            _buildSearchTypeToggle(),
+            const SizedBox(height: 16),
+
+            // Search bar
+            _buildSearchBar(),
+            const SizedBox(height: 16),
+
+            // Filters (if shown)
+            if (_showFilters && _searchType == 'Venues') _buildFilters(),
+
+            // Results
+            Expanded(
+              child: _buildResults(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -588,146 +561,6 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                   child: const Text('Follow'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWigglyNavBar() {
-    return AnimatedBuilder(
-      animation: _wiggleAnimation,
-      builder: (context, child) {
-        final wiggle = _wiggleAnimation.value;
-
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.purple.shade400,
-                Colors.purple.shade600,
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, -5),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(
-                      index: 0,
-                      icon: Icons.home_rounded,
-                      label: 'Home',
-                      wiggleOffset: 0,
-                      wiggle: wiggle,
-                    ),
-                    _buildNavItem(
-                      index: 1,
-                      icon: Icons.search_rounded,
-                      label: 'Search',
-                      wiggleOffset: 0.33,
-                      wiggle: wiggle,
-                    ),
-                    _buildNavItem(
-                      index: 2,
-                      icon: Icons.person_rounded,
-                      label: 'Profile',
-                      wiggleOffset: 0.66,
-                      wiggle: wiggle,
-                    ),
-                    _buildNavItem(
-                      index: 3,
-                      icon: Icons.star_rounded,
-                      label: 'Reviews',
-                      wiggleOffset: 1.0,
-                      wiggle: wiggle,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required String label,
-    required double wiggleOffset,
-    required double wiggle,
-  }) {
-    final isSelected = _selectedIndex == index;
-
-    // Create wiggle effect using sin/cos
-    final wiggleAmount = 3.0;
-    final offsetY = sin((wiggle + wiggleOffset) * 2 * pi) * wiggleAmount;
-    final scale = 1.0 + (cos((wiggle + wiggleOffset) * 2 * pi) * 0.05);
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label tapped!'),
-            duration: const Duration(milliseconds: 500),
-          ),
-        );
-      },
-      child: Transform.translate(
-        offset: Offset(0, offsetY),
-        child: Transform.scale(
-          scale: scale,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: isSelected
-                ? BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  )
-                : null,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.6),
-                  size: isSelected ? 28 : 24,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.6),
-                    fontSize: isSelected ? 12 : 10,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
                 ),
               ],
             ),
