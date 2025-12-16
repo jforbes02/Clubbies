@@ -121,8 +121,8 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
                     ),
                     _buildNavItem(
                       index: 3,
-                      icon: Icons.star_rounded,
-                      label: 'Reviews',
+                      icon: Icons.map_rounded,
+                      label: 'Map',
                       wiggleOffset: 1.0,
                       wiggle: wiggle,
                     ),
@@ -154,11 +154,11 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
       onTap: () {
         if (_selectedIndex == index) return; // Already on this page
 
-        // Handle Reviews tab (not implemented yet)
+        // Handle Map tab (not implemented yet)
         if (index == 3) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Reviews page coming soon!'),
+              content: Text('Map coming soon!'),
               duration: Duration(milliseconds: 500),
             ),
           );

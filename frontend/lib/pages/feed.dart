@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import '../services/venue_service.dart';
+import '../models/venue.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -9,6 +11,31 @@ class FeedPage extends StatefulWidget {
 }
 
 class _FeedPageState extends State<FeedPage> {
+  final VenueService _venueService = VenueService();
+  List<Venue> _venues = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVenues();
+  }
+
+  Future<void> _loadVenues() async {
+    try {
+      final venues = await _venueService.getAllVenues();
+      setState(() {
+        _venues = venues;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,16 +100,74 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Widget _buildFeed() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Error Loading Feed',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    _errorMessage = null;
+                  });
+                  _loadVenues();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_venues.isEmpty) {
+      return Center(
+        child: Text(
+          'No venues available yet.',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 80),
-      itemCount: 5, // Placeholder
+      itemCount: _venues.length,
       itemBuilder: (context, index) {
-        return _buildVenuePost(index);
+        return _buildVenuePost(_venues[index]);
       },
     );
   }
 
-  Widget _buildVenuePost(int index) {
+  Widget _buildVenuePost(Venue venue) {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
@@ -104,7 +189,7 @@ class _FeedPageState extends State<FeedPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Venue Image Placeholder
-              _buildVenueImage(index),
+              _buildVenueImage(venue),
 
               // Venue Info
               Padding(
@@ -121,7 +206,7 @@ class _FeedPageState extends State<FeedPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'The Purple Lounge ${index + 1}',
+                                venue.venueName,
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -133,11 +218,14 @@ class _FeedPageState extends State<FeedPage> {
                                 children: [
                                   const Icon(Icons.location_on, color: Colors.white70, size: 16),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    'Downtown District',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.8),
-                                      fontSize: 14,
+                                  Expanded(
+                                    child: Text(
+                                      venue.address,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.8),
+                                        fontSize: 14,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
@@ -145,15 +233,16 @@ class _FeedPageState extends State<FeedPage> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Text(
-                            'Nightclub',
-                            style: TextStyle(
+                          child: Text(
+                            venue.venueType.isNotEmpty ? venue.venueType.first : 'Venue',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -165,33 +254,44 @@ class _FeedPageState extends State<FeedPage> {
                     const SizedBox(height: 12),
 
                     // Venue details
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
-                        _buildInfoChip(Icons.access_time, '10 PM - 3 AM'),
-                        const SizedBox(width: 12),
-                        _buildInfoChip(Icons.people, 'Large'),
-                        const SizedBox(width: 12),
-                        _buildInfoChip(Icons.attach_money, '\$25'),
+                        _buildInfoChip(Icons.access_time, venue.hours),
+                        _buildInfoChip(Icons.people, venue.capacity),
+                        _buildInfoChip(Icons.attach_money, '\$${venue.price}'),
+                        _buildInfoChip(Icons.cake, '${venue.ageReq}+'),
                       ],
                     ),
+
+                    // Description
+                    if (venue.description != null && venue.description!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        venue.description!,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 14,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Action buttons
                     Row(
                       children: [
-                        _buildActionButton(Icons.favorite_border, '124', () {}),
+                        _buildActionButton(Icons.favorite_border, '0', () {}),
                         const SizedBox(width: 16),
-                        _buildActionButton(Icons.comment_outlined, '18', () {}),
+                        _buildActionButton(Icons.comment_outlined, '0', () {}),
                         const SizedBox(width: 16),
                         _buildActionButton(Icons.share_outlined, 'Share', () {}),
                         const Spacer(),
                         _buildSaveButton(),
                       ],
                     ),
-                    const SizedBox(height: 16),
-
-                    // Reviews section
-                    _buildReviewsSection(index),
                   ],
                 ),
               ),
@@ -202,7 +302,7 @@ class _FeedPageState extends State<FeedPage> {
     );
   }
 
-  Widget _buildVenueImage(int index) {
+  Widget _buildVenueImage(Venue venue) {
     return Container(
       height: 250,
       width: double.infinity,
@@ -221,13 +321,27 @@ class _FeedPageState extends State<FeedPage> {
         children: [
           // Placeholder for actual image
           Center(
-            child: Icon(
-              Icons.image_outlined,
-              size: 80,
-              color: Colors.white.withValues(alpha: 0.5),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.nightlife_outlined,
+                  size: 80,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  venue.venueName,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
-          // Rating badge
+          // Age requirement badge
           Positioned(
             top: 12,
             right: 12,
@@ -239,10 +353,10 @@ class _FeedPageState extends State<FeedPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 16),
+                  const Icon(Icons.badge, color: Colors.white, size: 16),
                   const SizedBox(width: 4),
                   Text(
-                    '${4.0 + (index * 0.2)}',
+                    '${venue.ageReq}+',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import '../services/search_service.dart';
+import '../models/venue.dart';
+import '../models/user.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -9,7 +12,7 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-
+  final SearchService _searchService = SearchService();
   final TextEditingController _searchController = TextEditingController();
   String _searchType = 'Venues'; // 'Venues' or 'People'
   bool _showFilters = false;
@@ -21,10 +24,63 @@ class _SearchPageState extends State<SearchPage> {
   int _minAge = 18;
   String? _selectedHours;
 
+  // Search results
+  List<Venue> _venueResults = [];
+  List<User> _userResults = [];
+  bool _isSearching = false;
+  String? _searchError;
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _performSearch() async {
+    final query = _searchController.text.trim();
+
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+    });
+
+    try {
+      if (_searchType == 'Venues') {
+        final venues = await _searchService.searchVenues(
+          venueName: query.isNotEmpty ? query : null,
+          // Only apply filters if user has explicitly selected them (not null)
+          venueType: _selectedVenueType,
+          minCapacity: _selectedCapacity,
+          maxCapacity: _selectedCapacity,
+          hours: _selectedHours,
+          // Only apply price/age filters if user has actually adjusted them from defaults
+          maxPrice: _priceRange.end < 500 ? _priceRange.end.round() : null,
+          minAge: _minAge > 18 ? _minAge : null,
+        );
+        setState(() {
+          _venueResults = venues;
+          _isSearching = false;
+        });
+      } else {
+        if (query.isEmpty) {
+          setState(() {
+            _userResults = [];
+            _isSearching = false;
+          });
+          return;
+        }
+        final users = await _searchService.searchUsers(username: query);
+        setState(() {
+          _userResults = users;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _searchError = e.toString();
+        _isSearching = false;
+      });
+    }
   }
 
   @override
@@ -180,6 +236,9 @@ class _SearchPageState extends State<SearchPage> {
                     onPressed: () {
                       setState(() {
                         _searchController.clear();
+                        _venueResults = [];
+                        _userResults = [];
+                        _searchError = null;
                       });
                     },
                   )
@@ -189,6 +248,9 @@ class _SearchPageState extends State<SearchPage> {
           ),
           onChanged: (value) {
             setState(() {});
+          },
+          onSubmitted: (value) {
+            _performSearch();
           },
         ),
       ),
@@ -317,7 +379,7 @@ class _SearchPageState extends State<SearchPage> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: Apply filters
+                    _performSearch();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Filters applied!')),
                     );
@@ -397,23 +459,94 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildResults() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 80),
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 10, // Placeholder
-        itemBuilder: (context, index) {
-          if (_searchType == 'Venues') {
-            return _buildVenueCard(index);
-          } else {
-            return _buildPersonCard(index);
-          }
-        },
-      ),
-    );
+    if (_isSearching) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      );
+    }
+
+    if (_searchError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                'Error',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _searchError!,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _performSearch,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_searchType == 'Venues') {
+      if (_venueResults.isEmpty) {
+        return Center(
+          child: Text(
+            'No venues found. Try searching or adjusting filters.',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        );
+      }
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 80),
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: _venueResults.length,
+          itemBuilder: (context, index) {
+            return _buildVenueCard(_venueResults[index]);
+          },
+        ),
+      );
+    } else {
+      if (_userResults.isEmpty) {
+        return Center(
+          child: Text(
+            'No users found. Try searching for a username.',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        );
+      }
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 80),
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: _userResults.length,
+          itemBuilder: (context, index) {
+            return _buildPersonCard(_userResults[index]);
+          },
+        ),
+      );
+    }
   }
 
-  Widget _buildVenueCard(int index) {
+  Widget _buildVenueCard(Venue venue) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -441,7 +574,7 @@ class _SearchPageState extends State<SearchPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Venue ${index + 1}',
+                        venue.venueName,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -455,9 +588,9 @@ class _SearchPageState extends State<SearchPage> {
                         color: Colors.white.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: const Text(
-                        'Nightclub',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      child: Text(
+                        venue.venueType.isNotEmpty ? venue.venueType.first : 'Venue',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
                   ],
@@ -469,7 +602,7 @@ class _SearchPageState extends State<SearchPage> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        '123 Main St, City',
+                        venue.address,
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
                       ),
                     ),
@@ -481,14 +614,31 @@ class _SearchPageState extends State<SearchPage> {
                     const Icon(Icons.access_time, color: Colors.white70, size: 16),
                     const SizedBox(width: 4),
                     Text(
-                      '9 PM - 2 AM',
+                      venue.hours,
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
                     ),
                     const SizedBox(width: 16),
                     const Icon(Icons.people, color: Colors.white70, size: 16),
                     const SizedBox(width: 4),
                     Text(
-                      'Large',
+                      venue.capacity,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.attach_money, color: Colors.white70, size: 16),
+                    Text(
+                      '\$${venue.price}',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                    ),
+                    const SizedBox(width: 16),
+                    const Icon(Icons.cake, color: Colors.white70, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${venue.ageReq}+',
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
                     ),
                   ],
@@ -501,7 +651,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildPersonCard(int index) {
+  Widget _buildPersonCard(User user) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -526,7 +676,7 @@ class _SearchPageState extends State<SearchPage> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.white.withValues(alpha: 0.3),
-                  child: Icon(Icons.person, color: Colors.white, size: 30),
+                  child: const Icon(Icons.person, color: Colors.white, size: 30),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -534,7 +684,7 @@ class _SearchPageState extends State<SearchPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'User ${index + 1}',
+                        user.username,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -543,7 +693,7 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '@username${index + 1}',
+                        '@${user.username}',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 14,
@@ -560,7 +710,7 @@ class _SearchPageState extends State<SearchPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
-                  child: const Text('Follow'),
+                  child: const Text('View'),
                 ),
               ],
             ),
