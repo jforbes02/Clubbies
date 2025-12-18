@@ -34,19 +34,6 @@ def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: 
 
 
 # noinspection PyTypeHints
-@router.get("/{venue_id}", response_model=v_models.VenueResponse)
-def get_venue(db: DbSession, venue_id: int):
-    return service.get_venue_by_id(db, venue_id)
-
-
-# noinspection PyTypeHints
-@router.delete("/{venue_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_venue(db: DbSession, venue_id: int):
-    # Add admin check here
-    service.delete_venue(db, venue_id)
-
-
-# noinspection PyTypeHints
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_all_venues(db: DbSession, after_venue_id: Optional[int] = None, limit: int = 20):
     venues = service.get_all_venues(db, after_venue_id, limit)
@@ -105,6 +92,19 @@ def search_venues(db: DbSession,
         "has_more": len(venues) == limit,
         'next_cursor': venues[-1].venue_id if venues else None
     }
+
+
+# noinspection PyTypeHints
+@router.get("/{venue_id}", response_model=v_models.VenueResponse)
+def get_venue(db: DbSession, venue_id: int):
+    return service.get_venue_by_id(db, venue_id)
+
+
+# noinspection PyTypeHints
+@router.delete("/{venue_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_venue(db: DbSession, venue_id: int):
+    # Add admin check here
+    service.delete_venue(db, venue_id)
 
 
 # noinspection PyTypeHints

@@ -69,9 +69,10 @@ def verify_token(token: str) -> reg_model.TokenData:
         raise HTTPException(status_code=401, detail='Could not validate tokens') from e
 
 #user Registration
-def register_user(db: Session, create_user: reg_model.CreateUser) -> None:
+def register_user(db: Session, create_user: reg_model.CreateUser) -> reg_model.Token:
     """
     Registers a new user and hashes the password before storing
+    Returns an access token for immediate authentication
     """
     existing_user = db.query(User).filter((User.username == create_user.username) | (User.email == create_user.email)).first()
     if existing_user:
@@ -90,7 +91,12 @@ def register_user(db: Session, create_user: reg_model.CreateUser) -> None:
         )
         db.add(create_user_model) #adds to db session
         db.commit() #saves to db
+        db.refresh(create_user_model) #refresh to get user_id
         logging.info(f"Created new user {create_user.username} Success!")
+
+        # Create and return access token for immediate authentication
+        token = create_access_token(create_user_model.username, create_user_model.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        return reg_model.Token(access_token=token, token_type="bearer")
     except Exception as e:
         db.rollback()
         logging.error(f"Failed to register user: {create_user.username}. Error: {e}")

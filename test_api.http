@@ -1,0 +1,197 @@
+### Clubbies API Test File
+### Base URL
+@baseUrl = http://127.0.0.1:8000
+@token = your-jwt-token-here
+
+### Health Check
+GET {{baseUrl}}/health
+
+### Root Endpoint
+GET {{baseUrl}}/
+
+###
+### AUTH ENDPOINTS
+###
+
+### Register User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser123",
+  "email": "test@example.com",
+  "password": "password123",
+  "age": 21
+}
+
+### Login User
+POST {{baseUrl}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser123&password=password123
+
+### Copy the access_token from login response and update @token variable above
+
+###
+### USER ENDPOINTS
+###
+
+### Get Current User Profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+
+### Change Password
+PUT {{baseUrl}}/users/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "old_password": "password123",
+  "new_password": "newpassword123",
+  "new_password_confirmed": "newpassword123"
+}
+
+### Search Users
+GET {{baseUrl}}/users/search?username=test&limit=5
+
+###
+### VENUE ENDPOINTS
+###
+
+### Get All Venues (Paginated)
+GET {{baseUrl}}/venues/?limit=10
+
+### Get All Venues (With Pagination)
+GET {{baseUrl}}/venues/?after_venue_id=1&limit=5
+
+### Get Specific Venue
+GET {{baseUrl}}/venues/1
+
+### Create Venue (Admin Required)
+POST {{baseUrl}}/venues/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "venue_name": "Club Paradise",
+  "address": "123 Nightlife Street, Miami, FL",
+  "hours": "9:00 PM - 4:00 AM",
+  "venue_type": ["Nightclub", "Lounge"],
+  "age_req": 21,
+  "description": "The hottest nightclub in Miami with world-class DJs",
+  "capacity": "Large",
+  "price": 50
+}
+
+### Update Venue (Admin Required)
+PUT {{baseUrl}}/venues/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "venue_name": "Club Paradise VIP",
+  "price": 75,
+  "description": "Updated description with VIP experience"
+}
+
+### Delete Venue (Admin Required)
+DELETE {{baseUrl}}/venues/1
+Authorization: Bearer {{token}}
+
+### Search Venues
+GET {{baseUrl}}/venues/search?venue_name=club&max_price=100&min_age=18&limit=10
+
+### Search Venues with Location
+GET {{baseUrl}}/venues/search?location_search=Miami&venue_type=Nightclub&limit=5
+
+###
+### REVIEW ENDPOINTS
+###
+
+### Upload Review
+POST {{baseUrl}}/reviews/upload-review
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="venue_id"
+
+1
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="rating"
+
+4.5
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="review_text"
+
+Amazing atmosphere and great music! Had an incredible night.
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### Get Reviews by Venue (Paginated)
+GET {{baseUrl}}/reviews/venues/1?limit=10
+
+### Get Reviews by Venue (With Pagination)
+GET {{baseUrl}}/reviews/venues/1?after_review_id=1&limit=5
+
+### Get Reviews by User
+GET {{baseUrl}}/reviews/users/1?limit=10
+
+### Update Review
+PUT {{baseUrl}}/reviews/update-review/1
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="rating"
+
+5.0
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="review_text"
+
+Updated review - absolutely phenomenal experience!
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### Delete Review
+DELETE {{baseUrl}}/reviews/delete-review?review_id=1
+Authorization: Bearer {{token}}
+
+###
+### PHOTO ENDPOINTS
+###
+
+### Upload Photo
+POST {{baseUrl}}/photo/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="venue_id"
+
+1
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="caption"
+
+Epic night at Club Paradise!
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="club_photo.jpg"
+Content-Type: image/jpeg
+
+< ./test_image.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### Get Photos by Venue (Paginated)
+GET {{baseUrl}}/photo/venues/1?limit=10
+
+### Get Photos by Venue (With Pagination)  
+GET {{baseUrl}}/photo/venues/1?after_photo_id=1&limit=5
+
+### Get Photos by User
+GET {{baseUrl}}/photo/users/1?limit=10
+
+### Update Photo Caption
+PUT {{baseUrl}}/photo/update-photo?photo_id=1&new_caption=Updated caption for this amazing shot!
+Authorization: Bearer {{token}}
+
+### Delete Photo
+DELETE {{baseUrl}}/photo/delete-photo?photo_id=1
+Authorization: Bearer {{token}}

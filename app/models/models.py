@@ -48,9 +48,12 @@ class Photo(Base):
 class Review(Base):
     __tablename__ = "reviews"
     review_id = Column(Integer, primary_key=True, index=True)
-    rating = Column(Float, nullable=False)
+    rating = Column(Float, nullable=True)  # Nullable for replies
     review_text = Column(Text)
     created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    # For reply functionality
+    parent_review_id = Column(Integer, ForeignKey("reviews.review_id"), nullable=True)
 
     __table_args__ = (
         CheckConstraint('rating <= 5'),
@@ -62,6 +65,8 @@ class Review(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     #each review has a venue with a venue id
     venue_id = Column(Integer, ForeignKey("venues.venue_id"), nullable=False)
+    #replies relationship
+    replies = relationship("Review", backref="parent", remote_side=[review_id])
 
 
 class VenueType(str, Enum):
@@ -96,3 +101,4 @@ class Venue(Base):
     #relationships
     reviews = relationship("Review", backref="venue")
     photos = relationship("Photo", backref="venue")
+
