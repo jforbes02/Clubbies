@@ -1,4 +1,3 @@
-#what data is accepted and what do my tables look like
 from enum import Enum
 from sqlalchemy import Column, Integer, String, DateTime, Float, CheckConstraint, Text, ForeignKey, Enum as SQEnum
 from sqlalchemy.orm import relationship
@@ -17,7 +16,7 @@ class User(Base):
     password_hashed = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     age = Column(Integer, nullable=False)
-    role = Column(Enum('user', 'admin', 'mod'), default='user')
+    role = Column(SQEnum('user', 'admin', 'mod', name='user_role', create_type=False), default='user')
     
 
     #relationships

@@ -15,12 +15,9 @@ router = APIRouter(
 # noinspection PyTypeHints
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: CurrentUser):
-    # Admin-only venue creation
-    if require_admin:
-        pass
-    else:
-        raise HTTPException(status_code=403, detail="Admin privileges required")
 
+    require_admin(current_user, db)
+    
     venue = service.create_venue(db, venue_data)
     return v_models.VenueResponse(
         venue_id=venue.venue_id,
@@ -104,8 +101,8 @@ def get_venue(db: DbSession, venue_id: int):
 
 # noinspection PyTypeHints
 @router.delete("/{venue_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_venue(db: DbSession, venue_id: int):
-    # Add admin check here
+def delete_venue(db: DbSession, venue_id: int, current_user: CurrentUser):
+    require_admin(current_user, db)
     service.delete_venue(db, venue_id)
 
 
@@ -113,7 +110,7 @@ def delete_venue(db: DbSession, venue_id: int):
 @router.put("/{venue_id}", status_code=status.HTTP_200_OK)
 def update_venue(venue_id: int, venue_change: v_models.VenueUpdate,
                  db: DbSession, current_user: CurrentUser):
-    #Add admin check here
+    require_admin(current_user, db)
     updated_venue = service.update_venue(db, venue_id, venue_change)
     return v_models.VenueResponse(
         venue_id=updated_venue.venue_id,

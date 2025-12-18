@@ -30,7 +30,8 @@ def seed_database():
                 username="admin",
                 email="admin@clubbies.com",
                 password_hashed=get_password_hash("admin123"),
-                age=30
+                age=30,
+                role = "admin"
             ),
             User(
                 username="john_doe",
