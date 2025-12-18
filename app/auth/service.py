@@ -119,3 +119,13 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
         raise HTTPException(status_code=401, detail='Incorrect username or password')
     token = create_access_token(user.username, user.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return reg_model.Token(access_token=token, token_type="bearer")
+
+def require_admin(current_user: CurrentUser, db: Session):
+    """
+    Dependency to ensure the current user is an admin
+    """
+    user = db.query(User).filter(User.user_id == int(current_user.user_id)).first()
+    if not user or user.role != 'admin':
+        logging.warning(f"Unauthorized admin access attempt by user ID {current_user.user_id}")
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return True

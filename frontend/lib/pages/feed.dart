@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../services/venue_service.dart';
 import '../services/review_service.dart';
+import '../services/photo_service.dart';
 import '../models/venue.dart';
 import '../models/review.dart';
+import '../models/photo.dart';
+import 'photo_upload.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -15,12 +18,16 @@ class FeedPage extends StatefulWidget {
 class _FeedPageState extends State<FeedPage> {
   final VenueService _venueService = VenueService();
   final ReviewService _reviewService = ReviewService();
+  final PhotoService _photoService = PhotoService();
   List<Venue> _venues = [];
   bool _isLoading = true;
   String? _errorMessage;
 
   // Map to store review counts for each venue
   Map<int, int> _reviewCounts = {};
+
+  // Map to store photos for each venue
+  Map<int, List<Photo>> _venuePhotos = {};
 
   @override
   void initState() {
@@ -36,8 +43,9 @@ class _FeedPageState extends State<FeedPage> {
         _isLoading = false;
       });
 
-      // Load review counts for each venue
+      // Load review counts and photos for each venue
       _loadReviewCounts();
+      _loadVenuePhotos();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -62,32 +70,66 @@ class _FeedPageState extends State<FeedPage> {
     }
   }
 
+  Future<void> _loadVenuePhotos() async {
+    for (var venue in _venues) {
+      try {
+        final result = await _photoService.getVenuePhotos(venue.venueId, limit: 1);
+        final photos = result['photos'] as List<Photo>;
+        setState(() {
+          _venuePhotos[venue.venueId] = photos;
+        });
+      } catch (e) {
+        // Silently fail for photos - not critical
+        setState(() {
+          _venuePhotos[venue.venueId] = [];
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.purple.shade200,
-            Colors.purple.shade400,
-            Colors.purple.shade600,
-          ],
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.purple.shade200,
+              Colors.purple.shade400,
+              Colors.purple.shade600,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              _buildHeader(),
+
+              // Feed
+              Expanded(
+                child: _buildFeed(),
+              ),
+            ],
+          ),
         ),
       ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PhotoUploadPage()),
+          );
 
-            // Feed
-            Expanded(
-              child: _buildFeed(),
-            ),
-          ],
-        ),
+          // Refresh photos if upload was successful
+          if (result == true) {
+            _loadVenuePhotos();
+          }
+        },
+        backgroundColor: Colors.deepPurple,
+        child: const Icon(Icons.add_a_photo, color: Colors.white),
       ),
     );
   }
@@ -332,6 +374,9 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Widget _buildVenueImage(Venue venue) {
+    final photos = _venuePhotos[venue.venueId] ?? [];
+    final hasPhoto = photos.isNotEmpty;
+
     return Container(
       height: 250,
       width: double.infinity,
@@ -348,28 +393,20 @@ class _FeedPageState extends State<FeedPage> {
       ),
       child: Stack(
         children: [
-          // Placeholder for actual image
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.nightlife_outlined,
-                  size: 80,
-                  color: Colors.white.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  venue.venueName,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Display actual photo or placeholder
+          if (hasPhoto)
+            Image.network(
+              photos[0].imgUrl,
+              height: 250,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback to placeholder if image fails to load
+                return _buildPlaceholder(venue);
+              },
+            )
+          else
+            _buildPlaceholder(venue),
           // Age requirement badge
           Positioned(
             top: 12,
@@ -394,6 +431,30 @@ class _FeedPageState extends State<FeedPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder(Venue venue) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.nightlife_outlined,
+            size: 80,
+            color: Colors.white.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            venue.venueName,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],

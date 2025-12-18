@@ -17,7 +17,8 @@ class User(Base):
     password_hashed = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     age = Column(Integer, nullable=False)
-
+    role = Column(Enum('user', 'admin', 'mod'), default='user')
+    
 
     #relationships
     #One user can make multiple reviews but each review belongs to one user

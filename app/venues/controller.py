@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Query, HTTPException
 from app.core.database import DbSession
-from app.auth.service import CurrentUser
+from app.auth.service import CurrentUser, require_admin
 from . import v_models
 from . import service
 from ..models.models import Venue, User
@@ -16,8 +16,10 @@ router = APIRouter(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: CurrentUser):
     # Admin-only venue creation
-    user = db.query(User).filter(User.user_id == current_user.get_id()).first()
-    # Add proper admin role system
+    if require_admin:
+        pass
+    else:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
 
     venue = service.create_venue(db, venue_data)
     return v_models.VenueResponse(
