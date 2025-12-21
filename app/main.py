@@ -7,6 +7,7 @@ from app.auth import controller as auth_controller
 from app.users import controller as users_controller
 from app.venues import controller as venues_controller
 from app.reviews import controller as reviews_controller
+from app.ratings import controller as ratings_controller
 from app.photo import controller as photo_controller
 from app.protection.middleware import setup_middleware
 from app.protection.rate_limiting import limiter
@@ -39,6 +40,7 @@ app.include_router(auth_controller.router)
 app.include_router(users_controller.router)
 app.include_router(venues_controller.router)
 app.include_router(reviews_controller.router)
+app.include_router(ratings_controller.router)
 app.include_router(photo_controller.router)
 
 # Health check endpoint

@@ -3,8 +3,9 @@ from app.core.database import DbSession
 from app.auth.service import CurrentUser, require_admin
 from . import v_models
 from . import service
-from ..models.models import Venue, User
+from ..models.models import Venue, User, Review, Rating
 from typing import List, Optional
+from sqlalchemy import func
 
 router = APIRouter(
     prefix="/venues",
@@ -12,13 +13,20 @@ router = APIRouter(
 )
 
 
-# noinspection PyTypeHints
-@router.post("/", status_code=status.HTTP_201_CREATED)
-def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: CurrentUser):
+def _build_venue_response(venue: Venue, db: DbSession) -> v_models.VenueResponse:
+    """Helper function to build VenueResponse with rating data"""
+    # Get review count
+    review_count = db.query(func.count(Review.review_id)).filter(
+        Review.venue_id == venue.venue_id
+    ).scalar() or 0
 
-    require_admin(current_user, db)
-    
-    venue = service.create_venue(db, venue_data)
+    # Get average rating from ratings table
+    avg_rating = db.query(func.avg(Rating.rating)).filter(
+        Rating.venue_id == venue.venue_id
+    ).scalar()
+
+    average_rating = round(float(avg_rating), 2) if avg_rating else 0.0
+
     return v_models.VenueResponse(
         venue_id=venue.venue_id,
         venue_name=venue.venue_name,
@@ -28,8 +36,20 @@ def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: 
         age_req=venue.age_req,
         description=venue.description,
         capacity=venue.capacity,
-        price=venue.price
+        price=venue.price,
+        average_rating=average_rating,
+        review_count=review_count
     )
+
+
+# noinspection PyTypeHints
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: CurrentUser):
+
+    require_admin(current_user, db)
+
+    venue = service.create_venue(db, venue_data)
+    return _build_venue_response(venue, db)
 
 
 # noinspection PyTypeHints
@@ -37,17 +57,7 @@ def create_venue(db: DbSession, venue_data: v_models.VenueCreate, current_user: 
 def get_all_venues(db: DbSession, after_venue_id: Optional[int] = None, limit: int = 20):
     venues = service.get_all_venues(db, after_venue_id, limit)
     return {
-        'venues': [v_models.VenueResponse(
-            venue_id=venue.venue_id,
-            venue_name=venue.venue_name,
-            address=venue.address,
-            hours=venue.hours,
-            venue_type=venue.venue_type,
-            age_req=venue.age_req,
-            description=venue.description,
-            capacity=venue.capacity,
-            price=venue.price
-        ) for venue in venues],
+        'venues': [_build_venue_response(venue, db) for venue in venues],
         "has_more": len(venues) == limit,
         'next_cursor': venues[-1].venue_id if venues else None
     }
@@ -77,17 +87,7 @@ def search_venues(db: DbSession,
     )
     venues = service.search_venue(db, venue_name, filter_params, after_venue_id, limit)
     return {
-        'venues': [v_models.VenueResponse(
-            venue_id=venue.venue_id,
-            venue_name=venue.venue_name,
-            address=venue.address,
-            hours=venue.hours,
-            venue_type=venue.venue_type,
-            age_req=venue.age_req,
-            description=venue.description,
-            capacity=venue.capacity,
-            price=venue.price
-        ) for venue in venues],
+        'venues': [_build_venue_response(venue, db) for venue in venues],
         "has_more": len(venues) == limit,
         'next_cursor': venues[-1].venue_id if venues else None
     }
@@ -96,7 +96,8 @@ def search_venues(db: DbSession,
 # noinspection PyTypeHints
 @router.get("/{venue_id}", response_model=v_models.VenueResponse)
 def get_venue(db: DbSession, venue_id: int):
-    return service.get_venue_by_id(db, venue_id)
+    venue = service.get_venue_by_id(db, venue_id)
+    return _build_venue_response(venue, db)
 
 
 # noinspection PyTypeHints
@@ -112,15 +113,5 @@ def update_venue(venue_id: int, venue_change: v_models.VenueUpdate,
                  db: DbSession, current_user: CurrentUser):
     require_admin(current_user, db)
     updated_venue = service.update_venue(db, venue_id, venue_change)
-    return v_models.VenueResponse(
-        venue_id=updated_venue.venue_id,
-        venue_name=updated_venue.venue_name,
-        address=updated_venue.address,
-        hours=updated_venue.hours,
-        venue_type=updated_venue.venue_type,
-        age_req=updated_venue.age_req,
-        description=updated_venue.description,
-        capacity=updated_venue.capacity,
-        price=updated_venue.price
-    )
+    return _build_venue_response(updated_venue, db)
 

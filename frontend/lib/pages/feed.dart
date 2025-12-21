@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../services/venue_service.dart';
 import '../services/review_service.dart';
+import '../services/rating_service.dart';
 import '../services/photo_service.dart';
 import '../models/venue.dart';
 import '../models/review.dart';
@@ -17,14 +18,11 @@ class FeedPage extends StatefulWidget {
 
 class _FeedPageState extends State<FeedPage> {
   final VenueService _venueService = VenueService();
-  final ReviewService _reviewService = ReviewService();
   final PhotoService _photoService = PhotoService();
+  final RatingService _ratingService = RatingService();
   List<Venue> _venues = [];
   bool _isLoading = true;
   String? _errorMessage;
-
-  // Map to store review counts for each venue
-  Map<int, int> _reviewCounts = {};
 
   // Map to store photos for each venue
   Map<int, List<Photo>> _venuePhotos = {};
@@ -43,30 +41,13 @@ class _FeedPageState extends State<FeedPage> {
         _isLoading = false;
       });
 
-      // Load review counts and photos for each venue
-      _loadReviewCounts();
+      // Load photos for each venue
       _loadVenuePhotos();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _loadReviewCounts() async {
-    for (var venue in _venues) {
-      try {
-        final reviews = await _reviewService.getVenueReviews(venue.venueId, limit: 1);
-        setState(() {
-          _reviewCounts[venue.venueId] = reviews.length;
-        });
-      } catch (e) {
-        // Silently fail for review count - not critical
-        setState(() {
-          _reviewCounts[venue.venueId] = 0;
-        });
-      }
     }
   }
 
@@ -85,6 +66,87 @@ class _FeedPageState extends State<FeedPage> {
         });
       }
     }
+  }
+
+  Future<void> _showRatingDialog(Venue venue) async {
+    double selectedRating = 5.0;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.purple.shade700,
+          title: Text(
+            'Rate ${venue.venueName}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Tap a star to rate:',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final rating = (index + 1).toDouble();
+                  return GestureDetector(
+                    onTap: () {
+                      setDialogState(() {
+                        selectedRating = rating;
+                      });
+                    },
+                    child: Icon(
+                      Icons.star,
+                      color: rating <= selectedRating
+                          ? Colors.amber
+                          : Colors.white.withValues(alpha: 0.3),
+                      size: 48,
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await _ratingService.submitRating(
+                    venueId: venue.venueId,
+                    rating: selectedRating,
+                  );
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Rating submitted!')),
+                  );
+                  // Reload venues to update average rating
+                  await _loadVenues();
+                } catch (e) {
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.purple.shade900,
+              ),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -350,11 +412,30 @@ class _FeedPageState extends State<FeedPage> {
                     // Action buttons
                     Row(
                       children: [
-                        _buildActionButton(Icons.favorite_border, '0', () {}),
+                        // Rating display - tappable to rate
+                        GestureDetector(
+                          onTap: () => _showRatingDialog(venue),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 22),
+                              const SizedBox(width: 6),
+                              Text(
+                                venue.averageRating > 0
+                                    ? venue.averageRating.toStringAsFixed(1)
+                                    : 'Tap to rate',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(width: 16),
                         _buildActionButton(
                           Icons.comment_outlined,
-                          '${_reviewCounts[venue.venueId] ?? 0}',
+                          '${venue.reviewCount}',
                           () => _showReviewsModal(venue),
                         ),
                         const SizedBox(width: 16),
@@ -514,278 +595,23 @@ class _FeedPageState extends State<FeedPage> {
     );
   }
 
-  Widget _buildReviewsSection(int venueIndex) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recent Reviews',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Review 1
-        _buildReviewCard(
-          username: 'user${venueIndex + 1}',
-          rating: 5,
-          comment: 'Amazing atmosphere! The music was incredible and the staff was super friendly. Would definitely come back!',
-          likes: 12,
-          timeAgo: '2h ago',
-        ),
-        const SizedBox(height: 12),
-
-        // Review 2
-        _buildReviewCard(
-          username: 'partygoer${venueIndex + 2}',
-          rating: 4,
-          comment: 'Great place to hang out with friends. A bit crowded on weekends but totally worth it.',
-          likes: 8,
-          timeAgo: '5h ago',
-        ),
-        const SizedBox(height: 12),
-
-        // Show more reviews button
-        Center(
-          child: TextButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Loading more reviews...'),
-                  duration: Duration(milliseconds: 500),
-                ),
-              );
-            },
-            child: const Text(
-              'View all 18 reviews',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReviewCard({
-    required String username,
-    required int rating,
-    required String comment,
-    required int likes,
-    required String timeAgo,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // User info and rating
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                child: const Icon(Icons.person, color: Colors.white, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '@$username',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      timeAgo,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Star rating
-              Row(
-                children: List.generate(5, (index) {
-                  return Icon(
-                    index < rating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
-                    size: 16,
-                  );
-                }),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Comment
-          Text(
-            comment,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
-              fontSize: 14,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Actions
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {},
-                child: Row(
-                  children: [
-                    const Icon(Icons.thumb_up_outlined, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$likes',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () {
-                  _showCommentBottomSheet(username);
-                },
-                child: Row(
-                  children: [
-                    const Icon(Icons.chat_bubble_outline, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Reply',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showReviewsModal(Venue venue) {
-    showModalBottomSheet(
+  void _showReviewsModal(Venue venue) async {
+    final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _ReviewsModalSheet(venue: venue),
     );
+
+    // If a review was posted, reload venues to update ratings
+    if (result == true) {
+      setState(() {
+        _isLoading = true;
+      });
+      _loadVenues();
+    }
   }
 
-  void _showCommentBottomSheet(String replyTo) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.purple.shade400,
-                Colors.purple.shade600,
-              ],
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Reply to @$replyTo',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  autofocus: true,
-                  maxLines: 4,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Write your reply...',
-                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.2),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Reply posted!')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.purple.shade600,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Post Reply',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 // Reviews Modal Bottom Sheet Widget
@@ -804,7 +630,6 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
   bool _isLoading = true;
   String? _errorMessage;
   final TextEditingController _reviewTextController = TextEditingController();
-  double _selectedRating = 5.0;
 
   @override
   void initState() {
@@ -844,12 +669,10 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
     try {
       await _reviewService.createReview(
         venueId: widget.venue.venueId,
-        rating: _selectedRating,
         reviewText: _reviewTextController.text.trim(),
       );
 
       _reviewTextController.clear();
-      _selectedRating = 5.0;
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -861,6 +684,10 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
         _isLoading = true;
       });
       await _loadReviews();
+
+      // Notify parent to refresh venues
+      if (!mounted) return;
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -869,130 +696,6 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
     }
   }
 
-  Future<void> _submitReply(int parentReviewId) async {
-    final controller = TextEditingController();
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.purple.shade400,
-                Colors.purple.shade600,
-              ],
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Write a Reply',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                maxLines: 4,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Write your reply...',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.2),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (controller.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please write a reply')),
-                      );
-                      return;
-                    }
-
-                    try {
-                      await _reviewService.createReview(
-                        venueId: widget.venue.venueId,
-                        reviewText: controller.text.trim(),
-                        parentReviewId: parentReviewId,
-                      );
-
-                      if (!context.mounted) return;
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Reply posted successfully!')),
-                      );
-
-                      // Reload reviews
-                      setState(() {
-                        _isLoading = true;
-                      });
-                      await _loadReviews();
-                    } catch (e) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error posting reply: ${e.toString()}')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.purple.shade600,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Post Reply',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1068,34 +771,6 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
-                ),
-                const SizedBox(height: 12),
-                // Rating Picker
-                Row(
-                  children: [
-                    const Text(
-                      'Rating:',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                    const SizedBox(width: 12),
-                    ...List.generate(5, (index) {
-                      final rating = (index + 1).toDouble();
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedRating = rating;
-                          });
-                        },
-                        child: Icon(
-                          Icons.star,
-                          color: rating <= _selectedRating
-                              ? Colors.amber
-                              : Colors.white.withValues(alpha: 0.3),
-                          size: 32,
-                        ),
-                      );
-                    }),
-                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -1215,48 +890,18 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
                   ],
                 ),
               ),
-              if (review.rating != null)
-                Row(
-                  children: List.generate(5, (index) {
-                    return Icon(
-                      index < review.rating!.round() ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 18,
-                    );
-                  }),
-                ),
             ],
           ),
-          if (review.reviewText != null && review.reviewText!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              review.reviewText!,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.95),
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
-          ],
           const SizedBox(height: 12),
-          // Actions
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => _submitReply(review.reviewId),
-                child: Row(
-                  children: [
-                    const Icon(Icons.chat_bubble_outline, color: Colors.white70, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Reply (${review.replyCount})',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            review.reviewText,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.95),
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
+          const SizedBox(height: 12),
         ],
       ),
     );
