@@ -3,11 +3,14 @@ import 'dart:ui';
 import '../models/user.dart';
 import '../models/venue.dart';
 import '../models/photo.dart';
+import '../models/review.dart';
 import '../services/user_service.dart';
 import '../services/venue_service.dart';
 import '../services/photo_service.dart';
+import '../services/review_service.dart';
 import '../services/storage_service.dart';
 import 'auth.dart';
+import 'venue_detail.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -20,12 +23,15 @@ class _ProfilePageState extends State<ProfilePage> {
   final UserService _userService = UserService();
   final VenueService _venueService = VenueService();
   final PhotoService _photoService = PhotoService();
+  final ReviewService _reviewService = ReviewService();
   final StorageService _storageService = StorageService();
 
   User? _currentUser;
   List<Venue> _ratedVenues = [];
+  List<Review> _reviews = [];
   Map<int, List<Photo>> _venuePhotos = {};
   bool _isLoading = true;
+  bool _isLoadingReviews = true;
   String? _errorMessage;
 
   @override
@@ -50,12 +56,29 @@ class _ProfilePageState extends State<ProfilePage> {
         _isLoading = false;
       });
 
-      // Load photos for rated venues
+      // Load photos for rated venues and reviews in parallel
       _loadVenuePhotos();
+      _loadUserReviews();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUserReviews() async {
+    if (_currentUser == null) return;
+
+    try {
+      final reviews = await _reviewService.getUserReviews(_currentUser!.userId);
+      setState(() {
+        _reviews = reviews;
+        _isLoadingReviews = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingReviews = false;
       });
     }
   }
@@ -144,164 +167,248 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.purple.shade200,
-            Colors.purple.shade400,
-            Colors.purple.shade600,
-          ],
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.purple.shade700,
+              Colors.blue.shade800,
+              Colors.purple.shade900,
+            ],
+          ),
         ),
-      ),
-      child: SafeArea(
-        child: _isLoading
-            ? _buildLoadingState()
-            : _errorMessage != null
-                ? _buildErrorState()
-                : CustomScrollView(
-                    slivers: [
-                      // Logout button in top right
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+        child: SafeArea(
+          child: _isLoading
+              ? _buildLoadingState()
+              : _errorMessage != null
+                  ? _buildErrorState()
+                  : CustomScrollView(
+                      slivers: [
+                        // Logout button in top right
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.logout, color: Colors.white, size: 28),
+                                  onPressed: _showLogoutDialog,
+                                  tooltip: 'Logout',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Profile Picture and Name
+                        SliverToBoxAdapter(
+                          child: Column(
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.logout, color: Colors.white, size: 28),
-                                onPressed: _showLogoutDialog,
-                                tooltip: 'Logout',
+                              // Profile Picture
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: const CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: Colors.white,
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 70,
+                                    color: Colors.purple,
+                                  ),
+                                ),
                               ),
+                              const SizedBox(height: 20),
+
+                              // Username
+                              Text(
+                                _currentUser?.username ?? 'User',
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+
+                              // Age (if available)
+                              if (_currentUser?.age != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Age: ${_currentUser!.age}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 32),
+
+                              // Rated Venues Section Header
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.star, color: Colors.amber, size: 24),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'My Rated Venues',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white.withValues(alpha: 0.95),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                             ],
                           ),
                         ),
-                      ),
 
-                      // Profile Picture and Name
-                      SliverToBoxAdapter(
-                        child: Column(
-                          children: [
-                            // Profile Picture
-                            Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 4,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: const CircleAvatar(
-                                radius: 60,
-                                backgroundColor: Colors.white,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 70,
-                                  color: Colors.purple,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Name
-                            Text(
-                              _currentUser?.username ?? 'User',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-
-                            // Section Header
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.star, color: Colors.amber, size: 24),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'My Rated Venues',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white.withValues(alpha: 0.95),
+                        // Rated Venues List
+                        _ratedVenues.isEmpty
+                            ? SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(40.0),
+                                  child: Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.star_border,
+                                          size: 64,
+                                          color: Colors.white.withValues(alpha: 0.5),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No rated venues yet',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.7),
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Start rating venues to see them here!',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.6),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
-
-                      // Rated Venues List
-                      _ratedVenues.isEmpty
-                          ? SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.all(40.0),
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.star_border,
-                                        size: 64,
-                                        color: Colors.white.withValues(alpha: 0.5),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No rated venues yet',
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.7),
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Start rating venues to see them here!',
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.6),
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
+                                ),
+                              )
+                            : SliverPadding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 16.0),
+                                        child: _buildVenueCard(_ratedVenues[index]),
+                                      );
+                                    },
+                                    childCount: _ratedVenues.length,
                                   ),
                                 ),
                               ),
-                            )
-                          : SliverPadding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 16.0),
-                                      child: _buildVenueCard(_ratedVenues[index]),
-                                    );
-                                  },
-                                  childCount: _ratedVenues.length,
+
+                        // Reviews Section Header
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20.0, 32.0, 20.0, 16.0),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.rate_review, color: Colors.white, size: 24),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'My Reviews',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white.withValues(alpha: 0.95),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Reviews List
+                        if (_isLoadingReviews)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(40.0),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               ),
                             ),
+                          )
+                        else if (_reviews.isEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(40.0),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.rate_review_outlined,
+                                      size: 64,
+                                      color: Colors.white.withValues(alpha: 0.5),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No reviews yet',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.7),
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16.0),
+                                    child: _buildReviewCard(_reviews[index]),
+                                  );
+                                },
+                                childCount: _reviews.length,
+                              ),
+                            ),
+                          ),
 
-                      // Bottom padding for navbar
-                      const SliverToBoxAdapter(
-                        child: SizedBox(height: 100),
-                      ),
-                    ],
-                  ),
+                        // Bottom padding for navbar
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 100),
+                        ),
+                      ],
+                    ),
+        ),
       ),
     );
   }
@@ -378,23 +485,32 @@ class _ProfilePageState extends State<ProfilePage> {
     final photos = _venuePhotos[venue.venueId] ?? [];
     final hasPhoto = photos.isNotEmpty;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VenueDetailPage(venue: venue),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Column(
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Venue Image
@@ -529,6 +645,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -575,5 +692,105 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
+  }
+
+  Widget _buildReviewCard(Review review) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Venue name
+                Row(
+                  children: [
+                    const Icon(Icons.place, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        review.venueName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Review text
+                Text(
+                  review.reviewText,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Date
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 14,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatDate(review.createdAt),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return '$weeks ${weeks == 1 ? 'week' : 'weeks'} ago';
+    } else if (difference.inDays < 365) {
+      final months = (difference.inDays / 30).floor();
+      return '$months ${months == 1 ? 'month' : 'months'} ago';
+    } else {
+      final years = (difference.inDays / 365).floor();
+      return '$years ${years == 1 ? 'year' : 'years'} ago';
+    }
   }
 }

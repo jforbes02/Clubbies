@@ -7,9 +7,15 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     age: int
+    role: str
 
 #allows changing passwords
 class PasswordChange(BaseModel):
     old_password: str
     new_password: str
     new_password_confirmed: str
+
+#model for user search results (limited public info)
+class UserSearchResponse(BaseModel):
+    user_id: int
+    username: str

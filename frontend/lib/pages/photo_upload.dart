@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../services/photo_service.dart';
 import '../services/venue_service.dart';
+import '../services/user_service.dart';
 import '../models/venue.dart';
 
 class PhotoUploadPage extends StatefulWidget {
@@ -15,6 +16,7 @@ class PhotoUploadPage extends StatefulWidget {
 class _PhotoUploadPageState extends State<PhotoUploadPage> {
   final PhotoService _photoService = PhotoService();
   final VenueService _venueService = VenueService();
+  final UserService _userService = UserService();
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _captionController = TextEditingController();
 
@@ -28,7 +30,29 @@ class _PhotoUploadPageState extends State<PhotoUploadPage> {
   @override
   void initState() {
     super.initState();
+    _checkAdminAccess();
     _loadVenues();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    try {
+      final user = await _userService.getCurrentUserProfile();
+      if (user.role != 'admin') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Admin access required to upload photos')),
+          );
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error checking permissions: $e')),
+        );
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override

@@ -36,6 +36,32 @@ class ReviewService {
     }
   }
 
+  // Get all reviews written by a specific user (requires auth)
+  Future<List<Review>> getUserReviews(int userId, {int? afterReviewId, int limit = 50}) async {
+    final Map<String, String> queryParams = {
+      'limit': limit.toString(),
+    };
+
+    if (afterReviewId != null) {
+      queryParams['after_review_id'] = afterReviewId.toString();
+    }
+
+    final uri = Uri.parse('$baseUrl/reviews/users/$userId').replace(
+      queryParameters: queryParams,
+    );
+
+    final response = await _apiService.get(uri.toString());
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      final reviewsList = responseData['reviews'] as List;
+      return reviewsList.map((review) => Review.fromJson(review)).toList();
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception('Failed to fetch user reviews: ${errorBody['detail']}');
+    }
+  }
+
   // Create a review
   Future<Review> createReview({
     required int venueId,

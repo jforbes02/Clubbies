@@ -33,7 +33,7 @@ class _FeedPageState extends State<FeedPage> {
   Map<int, List<Photo>> _venuePhotos = {};
 
   // Map to store user's ratings for each venue (venueId -> ratingId)
-  Map<int, int?> _userRatings = {};
+  //Map<int, int?> _userRatings = {};
 
   @override
   void initState() {
@@ -259,21 +259,23 @@ class _FeedPageState extends State<FeedPage> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const PhotoUploadPage()),
-          );
+      floatingActionButton: _currentUser?.isAdmin == true
+          ? FloatingActionButton(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PhotoUploadPage()),
+                );
 
-          // Refresh photos if upload was successful
-          if (result == true) {
-            _loadVenuePhotos();
-          }
-        },
-        backgroundColor: Colors.deepPurple,
-        child: const Icon(Icons.add_a_photo, color: Colors.white),
-      ),
+                // Refresh photos if upload was successful
+                if (result == true) {
+                  _loadVenuePhotos();
+                }
+              },
+              backgroundColor: Colors.deepPurple,
+              child: const Icon(Icons.add_a_photo, color: Colors.white),
+            )
+          : null,
     );
   }
 
@@ -558,7 +560,7 @@ class _FeedPageState extends State<FeedPage> {
           // Display actual photo or placeholder
           if (hasPhoto)
             Image.network(
-              photos[0].imgUrl,
+              'http://127.0.0.1:8000${photos[0].imgUrl}',
               height: 250,
               width: double.infinity,
               fit: BoxFit.cover,

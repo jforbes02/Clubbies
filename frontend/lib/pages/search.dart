@@ -4,6 +4,7 @@ import '../services/search_service.dart';
 import '../models/venue.dart';
 import '../models/user.dart';
 import 'venue_detail.dart';
+import 'other_user_profile.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -714,7 +715,14 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OtherUserProfilePage(searchUser: user),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.purple.shade600,

@@ -2,14 +2,16 @@
 class User {
   final int userId;
   final String username;
-  final String email;
-  final int age;
+  final String? email;  // Optional for search results
+  final int? age;       // Optional for search results
+  final String? role;   // Optional for backwards compatibility
 
   User({
     required this.userId,
     required this.username,
-    required this.email,
-    required this.age,
+    this.email,
+    this.age,
+    this.role,
   });
 
   factory User.fromJson(Map<String, dynamic> json){
@@ -18,6 +20,7 @@ class User {
       username: json['username'],
       email: json['email'],
       age: json['age'],
+      role: json['role'],
     );
   }
 
@@ -25,8 +28,12 @@ class User {
     return {
       'user_id': userId,
       'username': username,
-      'email': email,
-      'age': age,
+      if (email != null) 'email': email,
+      if (age != null) 'age': age,
+      if (role != null) 'role': role,
     };
   }
+
+  bool get isAdmin => role == 'admin';
+  bool get isModerator => role == 'mod';
 }

@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session, joinedload
 from . import p_model
@@ -12,17 +12,25 @@ from sqlalchemy.exc import IntegrityError
 
 async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int, file: UploadFile) -> Photo:
     try:
-        #validate file type
-        if not file.content_type.startswith("image/"):
-            logging.error(f"File {file.content_type} not supported")
-            raise HTTPException(status_code=400, detail="File not supported")
+        #validate file type - accept any image or octet-stream (iOS image_picker sends this)
+        valid_content_types = file.content_type and (
+            file.content_type.startswith("image/") or
+            file.content_type == "application/octet-stream"
+        )
+        if not valid_content_types:
+            logging.error(f"Invalid content type: {file.content_type} for file: {file.filename}")
+            raise HTTPException(status_code=400, detail="File must be an image")
 
-        #unique filename
-        extension_types = {'jpg', 'jpeg', 'png', 'webp'}
+        #accept HEIC/HEIF from iPhones
+        extension_types = {'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'}
         file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else 'jpg'
-        if file_extension not in extension_types:
-            logging.error(f"File {file.content_type} not supported")
-            raise HTTPException(status_code=400, detail="File not supported")
+
+        #convert HEIC to JPG (image_picker already does this on iOS)
+        if file_extension in {'heic', 'heif'}:
+            file_extension = 'jpg'
+        elif file_extension not in extension_types:
+            logging.error(f"Unsupported extension: {file_extension} for file: {file.filename}")
+            raise HTTPException(status_code=400, detail=f"File type .{file_extension} not supported. Allowed: jpg, jpeg, png, webp")
 
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
@@ -54,7 +62,7 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
                 user_id=user_id,
                 file_size=len(file_content),
                 content_type=file.content_type,
-                uploaded_at=datetime.now(datetime.timezone.utc),
+                uploaded_at=datetime.now(timezone.utc),
             )
             db.add(photo)
             db.commit()
@@ -97,11 +105,11 @@ def get_photos_by_venue(db: Session, venue_id: int, after_photo_id: int = None, 
             raise HTTPException(status_code=404, detail="Venue not found")
             
         query = db.query(Photo).options(joinedload(Photo.user), joinedload(Photo.venue)).filter(Photo.venue_id == venue_id)
-        
+
         if after_photo_id:
-            query = query.filter(Photo.photo_id > after_photo_id)
-            
-        photos = query.order_by(Photo.photo_id.asc()).limit(limit).all()
+            query = query.filter(Photo.photo_id < after_photo_id)
+
+        photos = query.order_by(Photo.photo_id.desc()).limit(limit).all()
         
         logging.info(f"Retrieved {len(photos)} photos for venue {venue_id}")
         return photos
@@ -119,11 +127,11 @@ def get_photos_by_user(db: Session, user_id: int, after_photo_id: int = None, li
             raise HTTPException(status_code=404, detail="User not found")
             
         query = db.query(Photo).filter(Photo.user_id == user_id)
-        
+
         if after_photo_id:
-            query = query.filter(Photo.photo_id > after_photo_id)
-            
-        photos = query.order_by(Photo.photo_id.asc()).limit(limit).all()
+            query = query.filter(Photo.photo_id < after_photo_id)
+
+        photos = query.order_by(Photo.photo_id.desc()).limit(limit).all()
         
         logging.info(f"Retrieved {len(photos)} photos for user {user_id}")
         return photos
