@@ -180,7 +180,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                             age: int.parse(_ageController.text.trim()),
                                           );
                                         }
-                                        await storageService.saveToken(token.accessToken, token.tokenType);
+                                        await storageService.saveTokens(token.accessToken, token.refreshToken, token.tokenType);
 
                                         if (mounted){
                                           ScaffoldMessenger.of(context).showSnackBar(

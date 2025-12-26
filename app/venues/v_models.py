@@ -18,6 +18,8 @@ class VenueCreate(VenueBase):
 #output of venue data
 class VenueResponse(VenueBase):
     venue_id: int
+    average_rating: Optional[float] = 0.0
+    review_count: int = 0
 """
     venue_name: str
     address: str
@@ -26,6 +28,8 @@ class VenueResponse(VenueBase):
     age_req: int
     description: Optional[str] = None
     capacity: VenueCapacity = None
+    average_rating: Optional[float] = 0.0
+    review_count: int = 0
 """
 
 #update venue data

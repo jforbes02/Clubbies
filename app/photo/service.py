@@ -19,7 +19,7 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
 
         #unique filename
         extension_types = {'jpg', 'jpeg', 'png', 'webp'}
-        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else 'jpg'
         if file_extension not in extension_types:
             logging.error(f"File {file.content_type} not supported")
             raise HTTPException(status_code=400, detail="File not supported")

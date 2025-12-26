@@ -84,19 +84,22 @@ class LoginRequest {
 // ============================================================================
 
 /// Model for authentication token response
-/// Matches backend Token model: access_token, token_type
+/// Matches backend Token model: access_token, refresh_token, token_type
 class AuthToken {
   final String accessToken;
+  final String refreshToken;
   final String tokenType;
 
   AuthToken({
     required this.accessToken,
+    required this.refreshToken,
     required this.tokenType,
   });
 
   factory AuthToken.fromJson(Map<String, dynamic> json) {
     return AuthToken(
       accessToken: json['access_token'] as String,
+      refreshToken: json['refresh_token'] as String,
       tokenType: json['token_type'] as String,
     );
   }
@@ -104,6 +107,7 @@ class AuthToken {
   Map<String, dynamic> toJson() {
     return {
       'access_token': accessToken,
+      'refresh_token': refreshToken,
       'token_type': tokenType,
     };
   }

@@ -12,6 +12,7 @@ class CreateUser(BaseModel):
 #returns token for authentication
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -27,3 +28,8 @@ class TokenData(BaseModel):
         if self.user_id:
             return int(self.user_id)
         return None
+
+
+#used for refreshing tokens
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

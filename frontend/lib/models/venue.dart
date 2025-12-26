@@ -8,6 +8,8 @@ class Venue {
   final String? description;
   final String capacity;
   final int price;
+  final double averageRating;
+  final int reviewCount;
 
   Venue({
     required this.venueId,
@@ -19,6 +21,8 @@ class Venue {
     this.description,
     required this.capacity,
     required this.price,
+    this.averageRating = 0.0,
+    this.reviewCount = 0,
   });
 
   factory Venue.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,8 @@ class Venue {
       description: json['description'],
       capacity: json['capacity'],
       price: json['price'],
+      averageRating: (json['average_rating'] ?? 0.0).toDouble(),
+      reviewCount: json['review_count'] ?? 0,
     );
   }
 
@@ -46,6 +52,8 @@ class Venue {
       'description': description,
       'capacity': capacity,
       'price': price,
+      'average_rating': averageRating,
+      'review_count': reviewCount,
     };
   }
 }

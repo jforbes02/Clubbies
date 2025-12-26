@@ -15,7 +15,8 @@ from dotenv import load_dotenv
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 10
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 #security setup
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -52,8 +53,21 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta) -
         'sub': username,
         'id': str(user_id), #converts UUID into a string for JSON
         'exp': datetime.utcnow() + expires_delta, #expiration time
+        'type': 'access', #token type for validation
     }
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM) #makes and returns signed JWT
+
+def create_refresh_token(username: str, user_id: int) -> str:
+    """
+    Creates refresh JWT token with longer expiration for token renewal
+    """
+    encode = {
+        'sub': username,
+        'id': str(user_id),
+        'exp': datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        'type': 'refresh', #token type for validation
+    }
+    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_token(token: str) -> reg_model.TokenData:
     """
@@ -67,6 +81,31 @@ def verify_token(token: str) -> reg_model.TokenData:
     except PyJWTError as e:
         logging.warning(f"Failed authentication attempt - invalid token provided")
         raise HTTPException(status_code=401, detail='Could not validate tokens') from e
+
+def verify_refresh_token(token: str) -> dict:
+    """
+    Decodes and verifies refresh JWT tokens
+    :returns payload dict with user info if valid, raises HTTPException if not
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Verify this is a refresh token
+        token_type = payload.get("type")
+        if token_type != "refresh":
+            logging.warning(f"Invalid token type provided: {token_type}")
+            raise HTTPException(status_code=401, detail='Invalid token type')
+
+        user_id: str = payload.get("id")
+        username: str = payload.get("sub")
+
+        if not user_id or not username:
+            raise HTTPException(status_code=401, detail='Invalid token payload')
+
+        return {"user_id": user_id, "username": username}
+    except PyJWTError as e:
+        logging.warning(f"Failed refresh token validation - invalid or expired token")
+        raise HTTPException(status_code=401, detail='Invalid or expired refresh token') from e
 
 #user Registration
 def register_user(db: Session, create_user: reg_model.CreateUser) -> reg_model.Token:
@@ -94,9 +133,10 @@ def register_user(db: Session, create_user: reg_model.CreateUser) -> reg_model.T
         db.refresh(create_user_model) #refresh to get user_id
         logging.info(f"Created new user {create_user.username} Success!")
 
-        # Create and return access token for immediate authentication
-        token = create_access_token(create_user_model.username, create_user_model.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-        return reg_model.Token(access_token=token, token_type="bearer")
+        # Create and return access token and refresh token for immediate authentication
+        access_token = create_access_token(create_user_model.username, create_user_model.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        refresh_token = create_refresh_token(create_user_model.username, create_user_model.user_id)
+        return reg_model.Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
     except Exception as e:
         db.rollback()
         logging.error(f"Failed to register user: {create_user.username}. Error: {e}")
@@ -117,5 +157,16 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=401, detail='Incorrect username or password')
-    token = create_access_token(user.username, user.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    return reg_model.Token(access_token=token, token_type="bearer")
+    access_token = create_access_token(user.username, user.user_id, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_refresh_token(user.username, user.user_id)
+    return reg_model.Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+
+def require_admin(current_user: CurrentUser, db: Session):
+    """
+    Dependency to ensure the current user is an admin
+    """
+    user = db.query(User).filter(User.user_id == int(current_user.user_id)).first()
+    if not user or user.role != 'admin':
+        logging.warning(f"Unauthorized admin access attempt by user ID {current_user.user_id}")
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return True

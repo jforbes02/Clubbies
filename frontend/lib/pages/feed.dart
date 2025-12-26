@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../services/venue_service.dart';
 import '../services/review_service.dart';
+import '../services/rating_service.dart';
+import '../services/photo_service.dart';
+import '../services/user_service.dart';
 import '../models/venue.dart';
 import '../models/review.dart';
+import '../models/photo.dart';
+import '../models/user.dart';
+import 'photo_upload.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -14,13 +20,20 @@ class FeedPage extends StatefulWidget {
 
 class _FeedPageState extends State<FeedPage> {
   final VenueService _venueService = VenueService();
-  final ReviewService _reviewService = ReviewService();
+  final PhotoService _photoService = PhotoService();
+  final RatingService _ratingService = RatingService();
+  final UserService _userService = UserService();
+
   List<Venue> _venues = [];
   bool _isLoading = true;
   String? _errorMessage;
+  User? _currentUser;
 
-  // Map to store review counts for each venue
-  Map<int, int> _reviewCounts = {};
+  // Map to store photos for each venue
+  Map<int, List<Photo>> _venuePhotos = {};
+
+  // Map to store user's ratings for each venue (venueId -> ratingId)
+  Map<int, int?> _userRatings = {};
 
   @override
   void initState() {
@@ -31,13 +44,16 @@ class _FeedPageState extends State<FeedPage> {
   Future<void> _loadVenues() async {
     try {
       final venues = await _venueService.getAllVenues();
+      final user = await _userService.getCurrentUserProfile();
+
       setState(() {
         _venues = venues;
+        _currentUser = user;
         _isLoading = false;
       });
 
-      // Load review counts for each venue
-      _loadReviewCounts();
+      // Load photos for each venue
+      _loadVenuePhotos();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -46,48 +62,217 @@ class _FeedPageState extends State<FeedPage> {
     }
   }
 
-  Future<void> _loadReviewCounts() async {
+  Future<void> _loadVenuePhotos() async {
     for (var venue in _venues) {
       try {
-        final reviews = await _reviewService.getVenueReviews(venue.venueId, limit: 1);
+        final result = await _photoService.getVenuePhotos(venue.venueId, limit: 1);
+        final photos = result['photos'] as List<Photo>;
         setState(() {
-          _reviewCounts[venue.venueId] = reviews.length;
+          _venuePhotos[venue.venueId] = photos;
         });
       } catch (e) {
-        // Silently fail for review count - not critical
+        // Silently fail for photos - not critical
         setState(() {
-          _reviewCounts[venue.venueId] = 0;
+          _venuePhotos[venue.venueId] = [];
         });
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.purple.shade200,
-            Colors.purple.shade400,
-            Colors.purple.shade600,
-          ],
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(),
+  Future<void> _showRatingDialog(Venue venue) async {
+    // Check if user has already rated this venue
+    Map<String, dynamic>? existingRatingData;
+    try {
+      existingRatingData = await _ratingService.getUserRating(venue.venueId);
+    } catch (e) {
+      // User hasn't rated yet
+    }
 
-            // Feed
-            Expanded(
-              child: _buildFeed(),
+    final double? existingRating = existingRatingData?['rating'];
+    final int? ratingId = existingRatingData?['ratingId'];
+    double selectedRating = existingRating ?? 5.0;
+    final hasExistingRating = existingRating != null;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.purple.shade700,
+          title: Text(
+            hasExistingRating ? 'Update Rating' : 'Rate ${venue.venueName}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                hasExistingRating
+                    ? 'Your current rating: ${existingRating.toStringAsFixed(1)} ⭐'
+                    : 'Tap a star to rate:',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final rating = (index + 1).toDouble();
+                  return GestureDetector(
+                    onTap: () {
+                      setDialogState(() {
+                        selectedRating = rating;
+                      });
+                    },
+                    child: Icon(
+                      Icons.star,
+                      color: rating <= selectedRating
+                          ? Colors.amber
+                          : Colors.white.withValues(alpha: 0.3),
+                      size: 48,
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+          actions: [
+            if (hasExistingRating)
+              TextButton(
+                onPressed: () async {
+                  // Show confirmation dialog
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.purple.shade700,
+                      title: const Text(
+                        'Delete Rating?',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: const Text(
+                        'Are you sure you want to remove your rating?',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true && ratingId != null) {
+                    try {
+                      await _ratingService.deleteRating(ratingId);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Rating deleted!')),
+                      );
+                      await _loadVenues();
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Delete Rating', style: TextStyle(color: Colors.red)),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await _ratingService.submitRating(
+                    venueId: venue.venueId,
+                    rating: selectedRating,
+                  );
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        hasExistingRating ? 'Rating updated!' : 'Rating submitted!',
+                      ),
+                    ),
+                  );
+                  // Reload venues to update average rating
+                  await _loadVenues();
+                } catch (e) {
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.purple.shade900,
+              ),
+              child: Text(hasExistingRating ? 'Update' : 'Submit'),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.purple.shade200,
+              Colors.purple.shade400,
+              Colors.purple.shade600,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              _buildHeader(),
+
+              // Feed
+              Expanded(
+                child: _buildFeed(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PhotoUploadPage()),
+          );
+
+          // Refresh photos if upload was successful
+          if (result == true) {
+            _loadVenuePhotos();
+          }
+        },
+        backgroundColor: Colors.deepPurple,
+        child: const Icon(Icons.add_a_photo, color: Colors.white),
       ),
     );
   }
@@ -308,11 +493,30 @@ class _FeedPageState extends State<FeedPage> {
                     // Action buttons
                     Row(
                       children: [
-                        _buildActionButton(Icons.favorite_border, '0', () {}),
+                        // Rating display - tappable to rate
+                        GestureDetector(
+                          onTap: () => _showRatingDialog(venue),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 22),
+                              const SizedBox(width: 6),
+                              Text(
+                                venue.averageRating > 0
+                                    ? venue.averageRating.toStringAsFixed(1)
+                                    : 'Tap to rate',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(width: 16),
                         _buildActionButton(
                           Icons.comment_outlined,
-                          '${_reviewCounts[venue.venueId] ?? 0}',
+                          '${venue.reviewCount}',
                           () => _showReviewsModal(venue),
                         ),
                         const SizedBox(width: 16),
@@ -332,6 +536,9 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Widget _buildVenueImage(Venue venue) {
+    final photos = _venuePhotos[venue.venueId] ?? [];
+    final hasPhoto = photos.isNotEmpty;
+
     return Container(
       height: 250,
       width: double.infinity,
@@ -348,28 +555,20 @@ class _FeedPageState extends State<FeedPage> {
       ),
       child: Stack(
         children: [
-          // Placeholder for actual image
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.nightlife_outlined,
-                  size: 80,
-                  color: Colors.white.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  venue.venueName,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Display actual photo or placeholder
+          if (hasPhoto)
+            Image.network(
+              photos[0].imgUrl,
+              height: 250,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback to placeholder if image fails to load
+                return _buildPlaceholder(venue);
+              },
+            )
+          else
+            _buildPlaceholder(venue),
           // Age requirement badge
           Positioned(
             top: 12,
@@ -394,6 +593,30 @@ class _FeedPageState extends State<FeedPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder(Venue venue) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.nightlife_outlined,
+            size: 80,
+            color: Colors.white.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            venue.venueName,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -453,285 +676,37 @@ class _FeedPageState extends State<FeedPage> {
     );
   }
 
-  Widget _buildReviewsSection(int venueIndex) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recent Reviews',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Review 1
-        _buildReviewCard(
-          username: 'user${venueIndex + 1}',
-          rating: 5,
-          comment: 'Amazing atmosphere! The music was incredible and the staff was super friendly. Would definitely come back!',
-          likes: 12,
-          timeAgo: '2h ago',
-        ),
-        const SizedBox(height: 12),
-
-        // Review 2
-        _buildReviewCard(
-          username: 'partygoer${venueIndex + 2}',
-          rating: 4,
-          comment: 'Great place to hang out with friends. A bit crowded on weekends but totally worth it.',
-          likes: 8,
-          timeAgo: '5h ago',
-        ),
-        const SizedBox(height: 12),
-
-        // Show more reviews button
-        Center(
-          child: TextButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Loading more reviews...'),
-                  duration: Duration(milliseconds: 500),
-                ),
-              );
-            },
-            child: const Text(
-              'View all 18 reviews',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReviewCard({
-    required String username,
-    required int rating,
-    required String comment,
-    required int likes,
-    required String timeAgo,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // User info and rating
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                child: const Icon(Icons.person, color: Colors.white, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '@$username',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      timeAgo,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Star rating
-              Row(
-                children: List.generate(5, (index) {
-                  return Icon(
-                    index < rating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
-                    size: 16,
-                  );
-                }),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Comment
-          Text(
-            comment,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
-              fontSize: 14,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Actions
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {},
-                child: Row(
-                  children: [
-                    const Icon(Icons.thumb_up_outlined, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$likes',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () {
-                  _showCommentBottomSheet(username);
-                },
-                child: Row(
-                  children: [
-                    const Icon(Icons.chat_bubble_outline, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Reply',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showReviewsModal(Venue venue) {
-    showModalBottomSheet(
+  void _showReviewsModal(Venue venue) async {
+    final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _ReviewsModalSheet(venue: venue),
+      builder: (context) => _ReviewsModalSheet(
+        venue: venue,
+        currentUser: _currentUser,
+      ),
     );
+
+    // If a review was posted, reload venues to update ratings
+    if (result == true) {
+      setState(() {
+        _isLoading = true;
+      });
+      _loadVenues();
+    }
   }
 
-  void _showCommentBottomSheet(String replyTo) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.purple.shade400,
-                Colors.purple.shade600,
-              ],
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Reply to @$replyTo',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  autofocus: true,
-                  maxLines: 4,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Write your reply...',
-                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.2),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Reply posted!')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.purple.shade600,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Post Reply',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 // Reviews Modal Bottom Sheet Widget
 class _ReviewsModalSheet extends StatefulWidget {
   final Venue venue;
+  final User? currentUser;
 
-  const _ReviewsModalSheet({required this.venue});
+  const _ReviewsModalSheet({
+    required this.venue,
+    this.currentUser,
+  });
 
   @override
   State<_ReviewsModalSheet> createState() => _ReviewsModalSheetState();
@@ -743,7 +718,6 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
   bool _isLoading = true;
   String? _errorMessage;
   final TextEditingController _reviewTextController = TextEditingController();
-  double _selectedRating = 5.0;
 
   @override
   void initState() {
@@ -783,12 +757,10 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
     try {
       await _reviewService.createReview(
         venueId: widget.venue.venueId,
-        rating: _selectedRating,
         reviewText: _reviewTextController.text.trim(),
       );
 
       _reviewTextController.clear();
-      _selectedRating = 5.0;
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -800,6 +772,10 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
         _isLoading = true;
       });
       await _loadReviews();
+
+      // Notify parent to refresh venues
+      if (!mounted) return;
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -808,130 +784,6 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
     }
   }
 
-  Future<void> _submitReply(int parentReviewId) async {
-    final controller = TextEditingController();
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.purple.shade400,
-                Colors.purple.shade600,
-              ],
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Write a Reply',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                maxLines: 4,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Write your reply...',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.2),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (controller.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please write a reply')),
-                      );
-                      return;
-                    }
-
-                    try {
-                      await _reviewService.createReview(
-                        venueId: widget.venue.venueId,
-                        reviewText: controller.text.trim(),
-                        parentReviewId: parentReviewId,
-                      );
-
-                      if (!context.mounted) return;
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Reply posted successfully!')),
-                      );
-
-                      // Reload reviews
-                      setState(() {
-                        _isLoading = true;
-                      });
-                      await _loadReviews();
-                    } catch (e) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error posting reply: ${e.toString()}')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.purple.shade600,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Post Reply',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1007,34 +859,6 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
-                ),
-                const SizedBox(height: 12),
-                // Rating Picker
-                Row(
-                  children: [
-                    const Text(
-                      'Rating:',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                    const SizedBox(width: 12),
-                    ...List.generate(5, (index) {
-                      final rating = (index + 1).toDouble();
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedRating = rating;
-                          });
-                        },
-                        child: Icon(
-                          Icons.star,
-                          color: rating <= _selectedRating
-                              ? Colors.amber
-                              : Colors.white.withValues(alpha: 0.3),
-                          size: 32,
-                        ),
-                      );
-                    }),
-                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -1113,6 +937,8 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
   }
 
   Widget _buildReviewItem(Review review) {
+    final isOwnReview = widget.currentUser?.userId == review.userId;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -1127,7 +953,7 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
           Row(
             children: [
               CircleAvatar(
-                radius: 20,
+                radius: 30,
                 backgroundColor: Colors.white.withValues(alpha: 0.3),
                 child: const Icon(Icons.person, color: Colors.white, size: 20),
               ),
@@ -1154,51 +980,83 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
                   ],
                 ),
               ),
-              if (review.rating != null)
-                Row(
-                  children: List.generate(5, (index) {
-                    return Icon(
-                      index < review.rating!.round() ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 18,
-                    );
-                  }),
+              // Delete button for own reviews
+              if (isOwnReview)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  onPressed: () => _deleteReview(review),
+                  tooltip: 'Delete review',
                 ),
             ],
           ),
-          if (review.reviewText != null && review.reviewText!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              review.reviewText!,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.95),
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
-          ],
           const SizedBox(height: 12),
-          // Actions
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => _submitReply(review.reviewId),
-                child: Row(
-                  children: [
-                    const Icon(Icons.chat_bubble_outline, color: Colors.white70, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Reply (${review.replyCount})',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            review.reviewText,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.95),
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteReview(Review review) async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.purple.shade700,
+        title: const Text(
+          'Delete Review?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this review? This action cannot be undone.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
+
+    if (confirm == true) {
+      try {
+        await _reviewService.deleteReview(review.reviewId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review deleted successfully')),
+        );
+        // Reload reviews and notify parent to update count
+        setState(() {
+          _isLoading = true;
+        });
+        await _loadReviews();
+        // Close modal and signal parent to reload
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete review: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   String _formatDateTime(DateTime dateTime) {
