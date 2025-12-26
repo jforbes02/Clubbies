@@ -1,40 +1,20 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/user.dart';
-import 'storage_service.dart';
+import 'api_service.dart';
 
 class UserService {
   static const String baseUrl = 'http://127.0.0.1:8000';
   static const String _userEndpoint = '/users';
 
-  final StorageService _storageService = StorageService();
+  final ApiService _apiService = ApiService();
 
   // Get current user's profile
   Future<User> getCurrentUserProfile() async {
-    // Get the stored token
-    final token = await _storageService.getToken();
-    final tokenType = await _storageService.getTokenType();
-
-    if (token == null || tokenType == null) {
-      throw Exception('No authentication token found. Please log in.');
-    }
-
-    // The endpoint is /users/{user_id} but the backend uses CurrentUser
-    // so we can pass any value or the actual user_id
-    // Based on the controller, it ignores the path parameter and uses CurrentUser
-    final response = await http.get(
-      Uri.parse('$baseUrl$_userEndpoint/me'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': '$tokenType $token',
-      },
-    );
+    final response = await _apiService.get('$baseUrl$_userEndpoint/me');
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
       return User.fromJson(responseData);
-    } else if (response.statusCode == 401) {
-      throw Exception('Authentication failed. Please log in again.');
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception('Failed to load profile: ${errorBody['detail']}');
@@ -47,19 +27,8 @@ class UserService {
     required String newPassword,
     required String newPasswordConfirmed,
   }) async {
-    final token = await _storageService.getToken();
-    final tokenType = await _storageService.getTokenType();
-
-    if (token == null || tokenType == null) {
-      throw Exception('No authentication token found. Please log in.');
-    }
-
-    final response = await http.put(
-      Uri.parse('$baseUrl$_userEndpoint/change-password'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': '$tokenType $token',
-      },
+    final response = await _apiService.put(
+      '$baseUrl$_userEndpoint/change-password',
       body: jsonEncode({
         'old_password': oldPassword,
         'new_password': newPassword,
@@ -79,24 +48,10 @@ class UserService {
 
   // Delete user account
   Future<void> deleteAccount() async {
-    final token = await _storageService.getToken();
-    final tokenType = await _storageService.getTokenType();
-
-    if (token == null || tokenType == null) {
-      throw Exception('No authentication token found. Please log in.');
-    }
-
-    final response = await http.delete(
-      Uri.parse('$baseUrl$_userEndpoint/delete'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': '$tokenType $token',
-      },
-    );
+    final response = await _apiService.delete('$baseUrl$_userEndpoint/delete');
 
     if (response.statusCode == 204) {
-      // Successfully deleted, clear the token
-      await _storageService.deleteToken();
+      // Successfully deleted - token will be cleared by logout
       return;
     } else {
       final errorBody = jsonDecode(response.body);

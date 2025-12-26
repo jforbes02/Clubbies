@@ -4,6 +4,9 @@ from app.core.database import DbSession
 from . import rating_models
 from . import service
 from app.auth.service import CurrentUser
+from app.venues import v_models
+from app.models.models import Review, Rating
+from sqlalchemy import func
 
 router = APIRouter(
     prefix="/ratings",
@@ -59,3 +62,40 @@ def delete_rating(db: DbSession, current_user: CurrentUser, rating_id: int):
     """Delete a rating"""
     current_user_id = current_user.get_id()
     service.delete_rating(db, rating_id, current_user_id)
+
+
+@router.get("/user/venues", status_code=status.HTTP_200_OK)
+def get_user_rated_venues(db: DbSession, current_user: CurrentUser):
+    """Get all venues rated by the current user"""
+    current_user_id = current_user.get_id()
+    venues = service.get_user_rated_venues(db, current_user_id)
+
+    # Build venue responses with rating data
+    venue_responses = []
+    for venue in venues:
+        review_count = db.query(func.count(Review.review_id)).filter(
+            Review.venue_id == venue.venue_id
+        ).scalar() or 0
+
+        avg_rating = db.query(func.avg(Rating.rating)).filter(
+            Rating.venue_id == venue.venue_id
+        ).scalar()
+
+        average_rating = round(float(avg_rating), 2) if avg_rating else 0.0
+
+        venue_response = v_models.VenueResponse(
+            venue_id=venue.venue_id,
+            venue_name=venue.venue_name,
+            address=venue.address,
+            hours=venue.hours,
+            venue_type=venue.venue_type,
+            age_req=venue.age_req,
+            description=venue.description,
+            capacity=venue.capacity,
+            price=venue.price,
+            average_rating=average_rating,
+            review_count=review_count
+        )
+        venue_responses.append(venue_response)
+
+    return {"venues": venue_responses}

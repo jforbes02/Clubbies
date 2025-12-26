@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/photo.dart';
-import 'storage_service.dart';
+import 'api_service.dart';
 
 class PhotoService {
   static const String baseUrl = 'http://127.0.0.1:8000';
-  final StorageService _storageService = StorageService();
+  final ApiService _apiService = ApiService();
 
-  // Get photos for a venue (with pagination)
+  // Get photos for a venue (with pagination) - public endpoint
   Future<Map<String, dynamic>> getVenuePhotos(int venueId, {int? afterPhotoId, int limit = 20}) async {
     final Map<String, String> queryParams = {
       'limit': limit.toString(),
@@ -41,7 +41,7 @@ class PhotoService {
     }
   }
 
-  // Get photos for a user (with pagination)
+  // Get photos for a user (with pagination) - public endpoint
   Future<Map<String, dynamic>> getUserPhotos(int userId, {int? afterPhotoId, int limit = 20}) async {
     final Map<String, String> queryParams = {
       'limit': limit.toString(),
@@ -74,22 +74,22 @@ class PhotoService {
     }
   }
 
-  // Upload a photo
+  // Upload a photo - requires auth
   Future<Photo> uploadPhoto({
     required File imageFile,
     required int venueId,
     String? caption,
   }) async {
-    final token = await _storageService.getToken();
-    final tokenType = await _storageService.getTokenType();
+    // Get auth headers from ApiService
+    final authHeaders = await _apiService.getAuthHeaders();
 
     var request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/photo/upload'),
     );
 
-    // Add headers
-    request.headers['Authorization'] = '$tokenType $token';
+    // Add auth headers
+    request.headers.addAll(authHeaders);
 
     // Add file
     request.files.add(
@@ -114,20 +114,13 @@ class PhotoService {
     }
   }
 
-  // Delete a photo
+  // Delete a photo - requires auth
   Future<void> deletePhoto(int photoId) async {
-    final token = await _storageService.getToken();
-    final tokenType = await _storageService.getTokenType();
-
-    final response = await http.delete(
-      Uri.parse('$baseUrl/photo/delete-photo').replace(
-        queryParameters: {'photo_id': photoId.toString()},
-      ),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': '$tokenType $token',
-      },
+    final uri = Uri.parse('$baseUrl/photo/delete-photo').replace(
+      queryParameters: {'photo_id': photoId.toString()},
     );
+
+    final response = await _apiService.delete(uri.toString());
 
     if (response.statusCode != 204) {
       final errorBody = jsonDecode(response.body);
@@ -135,23 +128,16 @@ class PhotoService {
     }
   }
 
-  // Update photo caption
+  // Update photo caption - requires auth
   Future<void> updatePhotoCaption(int photoId, String newCaption) async {
-    final token = await _storageService.getToken();
-    final tokenType = await _storageService.getTokenType();
-
-    final response = await http.put(
-      Uri.parse('$baseUrl/photo/update-photo').replace(
-        queryParameters: {
-          'photo_id': photoId.toString(),
-          'new_caption': newCaption,
-        },
-      ),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': '$tokenType $token',
+    final uri = Uri.parse('$baseUrl/photo/update-photo').replace(
+      queryParameters: {
+        'photo_id': photoId.toString(),
+        'new_caption': newCaption,
       },
     );
+
+    final response = await _apiService.put(uri.toString());
 
     if (response.statusCode != 204) {
       final errorBody = jsonDecode(response.body);

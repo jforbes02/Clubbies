@@ -4,9 +4,11 @@ import '../services/venue_service.dart';
 import '../services/review_service.dart';
 import '../services/rating_service.dart';
 import '../services/photo_service.dart';
+import '../services/user_service.dart';
 import '../models/venue.dart';
 import '../models/review.dart';
 import '../models/photo.dart';
+import '../models/user.dart';
 import 'photo_upload.dart';
 
 class FeedPage extends StatefulWidget {
@@ -20,12 +22,18 @@ class _FeedPageState extends State<FeedPage> {
   final VenueService _venueService = VenueService();
   final PhotoService _photoService = PhotoService();
   final RatingService _ratingService = RatingService();
+  final UserService _userService = UserService();
+
   List<Venue> _venues = [];
   bool _isLoading = true;
   String? _errorMessage;
+  User? _currentUser;
 
   // Map to store photos for each venue
   Map<int, List<Photo>> _venuePhotos = {};
+
+  // Map to store user's ratings for each venue (venueId -> ratingId)
+  Map<int, int?> _userRatings = {};
 
   @override
   void initState() {
@@ -36,8 +44,11 @@ class _FeedPageState extends State<FeedPage> {
   Future<void> _loadVenues() async {
     try {
       final venues = await _venueService.getAllVenues();
+      final user = await _userService.getCurrentUserProfile();
+
       setState(() {
         _venues = venues;
+        _currentUser = user;
         _isLoading = false;
       });
 
@@ -69,7 +80,18 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Future<void> _showRatingDialog(Venue venue) async {
-    double selectedRating = 5.0;
+    // Check if user has already rated this venue
+    Map<String, dynamic>? existingRatingData;
+    try {
+      existingRatingData = await _ratingService.getUserRating(venue.venueId);
+    } catch (e) {
+      // User hasn't rated yet
+    }
+
+    final double? existingRating = existingRatingData?['rating'];
+    final int? ratingId = existingRatingData?['ratingId'];
+    double selectedRating = existingRating ?? 5.0;
+    final hasExistingRating = existingRating != null;
 
     await showDialog(
       context: context,
@@ -77,15 +99,17 @@ class _FeedPageState extends State<FeedPage> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.purple.shade700,
           title: Text(
-            'Rate ${venue.venueName}',
+            hasExistingRating ? 'Update Rating' : 'Rate ${venue.venueName}',
             style: const TextStyle(color: Colors.white),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Tap a star to rate:',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+              Text(
+                hasExistingRating
+                    ? 'Your current rating: ${existingRating.toStringAsFixed(1)} ⭐'
+                    : 'Tap a star to rate:',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 16),
               Row(
@@ -111,6 +135,59 @@ class _FeedPageState extends State<FeedPage> {
             ],
           ),
           actions: [
+            if (hasExistingRating)
+              TextButton(
+                onPressed: () async {
+                  // Show confirmation dialog
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.purple.shade700,
+                      title: const Text(
+                        'Delete Rating?',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: const Text(
+                        'Are you sure you want to remove your rating?',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true && ratingId != null) {
+                    try {
+                      await _ratingService.deleteRating(ratingId);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Rating deleted!')),
+                      );
+                      await _loadVenues();
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Delete Rating', style: TextStyle(color: Colors.red)),
+              ),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
@@ -125,7 +202,11 @@ class _FeedPageState extends State<FeedPage> {
                   if (!context.mounted) return;
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Rating submitted!')),
+                    SnackBar(
+                      content: Text(
+                        hasExistingRating ? 'Rating updated!' : 'Rating submitted!',
+                      ),
+                    ),
                   );
                   // Reload venues to update average rating
                   await _loadVenues();
@@ -141,7 +222,7 @@ class _FeedPageState extends State<FeedPage> {
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.purple.shade900,
               ),
-              child: const Text('Submit'),
+              child: Text(hasExistingRating ? 'Update' : 'Submit'),
             ),
           ],
         ),
@@ -600,7 +681,10 @@ class _FeedPageState extends State<FeedPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _ReviewsModalSheet(venue: venue),
+      builder: (context) => _ReviewsModalSheet(
+        venue: venue,
+        currentUser: _currentUser,
+      ),
     );
 
     // If a review was posted, reload venues to update ratings
@@ -617,8 +701,12 @@ class _FeedPageState extends State<FeedPage> {
 // Reviews Modal Bottom Sheet Widget
 class _ReviewsModalSheet extends StatefulWidget {
   final Venue venue;
+  final User? currentUser;
 
-  const _ReviewsModalSheet({required this.venue});
+  const _ReviewsModalSheet({
+    required this.venue,
+    this.currentUser,
+  });
 
   @override
   State<_ReviewsModalSheet> createState() => _ReviewsModalSheetState();
@@ -849,6 +937,8 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
   }
 
   Widget _buildReviewItem(Review review) {
+    final isOwnReview = widget.currentUser?.userId == review.userId;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -863,7 +953,7 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
           Row(
             children: [
               CircleAvatar(
-                radius: 20,
+                radius: 30,
                 backgroundColor: Colors.white.withValues(alpha: 0.3),
                 child: const Icon(Icons.person, color: Colors.white, size: 20),
               ),
@@ -890,6 +980,13 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
                   ],
                 ),
               ),
+              // Delete button for own reviews
+              if (isOwnReview)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  onPressed: () => _deleteReview(review),
+                  tooltip: 'Delete review',
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -905,6 +1002,61 @@ class _ReviewsModalSheetState extends State<_ReviewsModalSheet> {
         ],
       ),
     );
+  }
+
+  Future<void> _deleteReview(Review review) async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.purple.shade700,
+        title: const Text(
+          'Delete Review?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this review? This action cannot be undone.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _reviewService.deleteReview(review.reviewId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review deleted successfully')),
+        );
+        // Reload reviews and notify parent to update count
+        setState(() {
+          _isLoading = true;
+        });
+        await _loadReviews();
+        // Close modal and signal parent to reload
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete review: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   String _formatDateTime(DateTime dateTime) {

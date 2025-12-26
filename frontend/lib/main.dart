@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'pages/auth.dart';
+import 'services/auth_service.dart';
+
+// Global navigator key for context-independent navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
+  // Initialize auth service with navigator key
+  AuthService.initialize(navigatorKey);
+
   runApp(const MyApp());
 }
 
@@ -11,6 +18,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // Add global navigator key
       title: 'Clubbies',
       theme: ThemeData(
         primarySwatch: Colors.lightBlue,
@@ -19,6 +27,6 @@ class MyApp extends StatelessWidget {
       home: AuthScreen(),
       debugShowCheckedModeBanner: false,
     );
-    
+
   }
 }

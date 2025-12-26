@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models.models import Rating
+from app.models.models import Rating, Venue
 from . import rating_models
 import logging
 
@@ -73,4 +73,20 @@ def delete_rating(db: Session, rating_id: int, user_id: int) -> None:
     except Exception as e:
         db.rollback()
         logging.error(f"Error deleting rating: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+def get_user_rated_venues(db: Session, user_id: int) -> list[Venue]:
+    """Get all venues that a user has rated"""
+    try:
+        # Query venues that the user has rated
+        venues = db.query(Venue).join(
+            Rating, Rating.venue_id == Venue.venue_id
+        ).filter(
+            Rating.user_id == user_id
+        ).all()
+
+        return venues
+    except Exception as e:
+        logging.error(f"Error fetching user rated venues: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

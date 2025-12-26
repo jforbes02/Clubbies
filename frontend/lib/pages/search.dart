@@ -3,6 +3,7 @@ import 'dart:ui';
 import '../services/search_service.dart';
 import '../models/venue.dart';
 import '../models/user.dart';
+import 'venue_detail.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -547,103 +548,113 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildVenueCard(Venue venue) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VenueDetailPage(venue: venue),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        venue.venueName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          venue.venueName,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(15),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Text(
+                          venue.venueType.isNotEmpty ? venue.venueType.first : 'Venue',
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                        ),
                       ),
-                      child: Text(
-                        venue.venueType.isNotEmpty ? venue.venueType.first : 'Venue',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.white70, size: 16),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          venue.address,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        venue.address,
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, color: Colors.white70, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        venue.hours,
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      venue.hours,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
-                    ),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.people, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      venue.capacity,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.attach_money, color: Colors.white70, size: 16),
-                    Text(
-                      '\$${venue.price}',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
-                    ),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.cake, color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${venue.ageReq}+',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 16),
+                      const Icon(Icons.people, color: Colors.white70, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        venue.capacity,
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.attach_money, color: Colors.white70, size: 16),
+                      Text(
+                        '\$${venue.price}',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                      ),
+                      const SizedBox(width: 16),
+                      const Icon(Icons.cake, color: Colors.white70, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${venue.ageReq}+',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

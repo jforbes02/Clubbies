@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/auth.dart';
+import 'storage_service.dart';
+import '../pages/auth.dart';
 
 class AuthService {
   static const String baseUrl = 'http://127.0.0.1:8000';
@@ -8,7 +11,19 @@ class AuthService {
   //auth API endpoints
   static const String _registerEndpoint = '/auth/register';
   static const String _loginEndpoint = '/auth/login';
+  static const String _refreshEndpoint = '/auth/refresh';
   static const String _healthEndpoint = '/health';
+
+  // Global navigator key for context-independent navigation
+  static GlobalKey<NavigatorState>? navigatorKey;
+
+  // Storage service for token management
+  final StorageService _storageService = StorageService();
+
+  // Initialize the auth service with navigator key
+  static void initialize(GlobalKey<NavigatorState> key) {
+    navigatorKey = key;
+  }
 
   // register function
   Future<AuthToken> register({
@@ -73,6 +88,61 @@ class AuthService {
       final errorBody = jsonDecode(response.body);
       throw Exception('Failed to login: ${errorBody['detail']}');
   }
+  }
+
+  // Refresh access token using refresh token
+  Future<void> refreshAccessToken() async {
+    final refreshToken = await _storageService.getRefreshToken();
+    if (refreshToken == null) {
+      throw Exception('No refresh token available');
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl$_refreshEndpoint'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refresh_token': refreshToken}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      await _storageService.saveTokens(
+        data['access_token'],
+        data['refresh_token'],
+        data['token_type'],
+      );
+    } else {
+      // Refresh token expired or invalid - force logout
+      await forceLogout();
+      throw Exception('Session expired. Please login again.');
+    }
+  }
+
+  // Force logout and navigate to auth screen
+  Future<void> forceLogout() async {
+    // Clear tokens
+    await _storageService.deleteToken();
+
+    // Navigate to auth screen using global key
+    if (navigatorKey?.currentContext != null) {
+      navigatorKey!.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const AuthScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  // Check if access token is expired
+  Future<bool> isTokenExpired() async {
+    final token = await _storageService.getToken();
+    if (token == null) return true;
+
+    final authToken = AuthToken(
+      accessToken: token,
+      refreshToken: '', // Not needed for expiry check
+      tokenType: 'Bearer',
+    );
+
+    return authToken.isExpired;
   }
 
   // test API connection
