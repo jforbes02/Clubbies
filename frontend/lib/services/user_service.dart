@@ -1,9 +1,10 @@
 import 'dart:convert';
 import '../models/user.dart';
 import 'api_service.dart';
+import '../config/environment.dart';
 
 class UserService {
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static String get baseUrl => Environment.apiBaseUrl;
   static const String _userEndpoint = '/users';
 
   final ApiService _apiService = ApiService();

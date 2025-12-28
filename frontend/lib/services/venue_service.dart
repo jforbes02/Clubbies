@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/venue.dart';
 import 'api_service.dart';
+import '../config/environment.dart';
 
 class VenueService {
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static String get baseUrl => Environment.apiBaseUrl;
   final ApiService _apiService = ApiService();
 
   // Get all venues (for feed page) - public endpoint

@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/review.dart';
 import 'api_service.dart';
+import '../config/environment.dart';
 
 class ReviewService {
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static String get baseUrl => Environment.apiBaseUrl;
   final ApiService _apiService = ApiService();
 
   // Get reviews for a venue (public endpoint, no auth needed)

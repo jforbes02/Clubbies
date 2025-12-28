@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import '../models/auth.dart';
 import 'storage_service.dart';
 import '../pages/auth.dart';
+import '../config/environment.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static String get baseUrl => Environment.apiBaseUrl;
 
   //auth API endpoints
   static const String _registerEndpoint = '/auth/register';
