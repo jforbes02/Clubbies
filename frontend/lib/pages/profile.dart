@@ -9,6 +9,7 @@ import '../services/venue_service.dart';
 import '../services/photo_service.dart';
 import '../services/review_service.dart';
 import '../services/storage_service.dart';
+import '../config/environment.dart';
 import 'auth.dart';
 import 'venue_detail.dart';
 
@@ -532,7 +533,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     if (hasPhoto)
                       Image.network(
-                        'http://127.0.0.1:8000${photos[0].imgUrl}',
+                        '${Environment.apiBaseUrl}${photos[0].imgUrl}',
                         height: 200,
                         width: double.infinity,
                         fit: BoxFit.cover,

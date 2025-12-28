@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'api_service.dart';
+import '../config/environment.dart';
 
 class RatingService {
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static String get baseUrl => Environment.apiBaseUrl;
   final ApiService _apiService = ApiService();
 
   // Submit or update a rating for a venue

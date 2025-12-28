@@ -6,6 +6,7 @@ import '../models/review.dart';
 import '../services/photo_service.dart';
 import '../services/review_service.dart';
 import '../services/rating_service.dart';
+import '../config/environment.dart';
 
 class VenueDetailPage extends StatefulWidget {
   final Venue venue;
@@ -439,7 +440,7 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
       fit: StackFit.expand,
       children: [
         Image.network(
-          'http://127.0.0.1:8000${_photos[0].imgUrl}',
+          '${Environment.apiBaseUrl}${_photos[0].imgUrl}',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Container(

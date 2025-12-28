@@ -20,3 +20,6 @@ python-multipart==0.0.20
 
 # Environment variables
 python-dotenv==1.1.1
+
+# Image processing (for HEIC support)
+pillow==11.1.0
