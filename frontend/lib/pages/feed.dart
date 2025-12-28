@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:share_plus/share_plus.dart';
 import '../services/venue_service.dart';
 import '../services/review_service.dart';
 import '../services/rating_service.dart';
@@ -227,6 +228,26 @@ class _FeedPageState extends State<FeedPage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _shareVenue(Venue venue) {
+    final String shareText = '''
+Check out ${venue.venueName} on Clubbies!
+
+${venue.averageRating > 0 ? '⭐ ${venue.averageRating.toStringAsFixed(1)}/5 stars (${venue.reviewCount} reviews)' : '⭐ No ratings yet'}
+📍 ${venue.address}
+🎉 ${venue.venueType.isNotEmpty ? venue.venueType.first : 'Venue'} | ${venue.ageReq}+
+💵 \$${venue.price} | ${venue.capacity}
+🕐 ${venue.hours}
+${venue.description != null && venue.description!.isNotEmpty ? '\n${venue.description}' : ''}
+'''.trim();
+
+    final box = context.findRenderObject() as RenderBox?;
+    Share.share(
+      shareText,
+      subject: venue.venueName,
+      sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : null,
     );
   }
 
@@ -510,7 +531,7 @@ class _FeedPageState extends State<FeedPage> {
                           () => _showReviewsModal(venue),
                         ),
                         const SizedBox(width: 16),
-                        _buildActionButton(Icons.share_outlined, 'Share', () {}),
+                        _buildActionButton(Icons.share_outlined, 'Share', () => _shareVenue(venue)),
                         const Spacer(),
                         _buildSaveButton(),
                       ],
