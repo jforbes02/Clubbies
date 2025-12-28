@@ -21,6 +21,19 @@ class UserService {
     }
   }
 
+  // Get another user's profile by user_id
+  Future<User> getOtherUserProfile(int userId) async {
+    final response = await _apiService.get('$baseUrl$_userEndpoint/$userId');
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      return User.fromJson(responseData);
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception('Failed to load user profile: ${errorBody['detail']}');
+    }
+  }
+
   // Change password
   Future<void> changePassword({
     required String oldPassword,

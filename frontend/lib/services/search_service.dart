@@ -59,13 +59,11 @@ class SearchService {
   }
 
   // Search users by username
-  // Note: This endpoint doesn't exist yet in your backend
-  // You'll need to add it to users/controller.py
   Future<List<User>> searchUsers({
     required String username,
     int limit = 10,
   }) async {
-    final uri = Uri.parse('$baseUrl/users/search').replace(
+    final uri = Uri.parse('$baseUrl/users/search/').replace(
       queryParameters: {
         'username': username,
         'limit': limit.toString(),
@@ -79,12 +77,16 @@ class SearchService {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      // Assuming the response is a list of users
-      final usersList = responseData is List ? responseData : responseData['users'] as List;
+      // Backend returns a list directly
+      final usersList = responseData as List;
       return usersList.map((user) => User.fromJson(user)).toList();
     } else {
-      final errorBody = jsonDecode(response.body);
-      throw Exception('Failed to search users: ${errorBody['detail']}');
+      try {
+        final errorBody = jsonDecode(response.body);
+        throw Exception('Failed to search users: ${errorBody['detail'] ?? errorBody}');
+      } catch (e) {
+        throw Exception('Failed to search users: ${response.statusCode} - ${response.body}');
+      }
     }
   }
 }

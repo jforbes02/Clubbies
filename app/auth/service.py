@@ -6,6 +6,7 @@ import jwt
 from jwt import PyJWTError
 from sqlalchemy.orm import Session
 from app.models.models import User
+from app.core.database import DbSession
 from . import reg_model
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 import logging
@@ -161,7 +162,7 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
     refresh_token = create_refresh_token(user.username, user.user_id)
     return reg_model.Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
-def require_admin(current_user: CurrentUser, db: Session):
+def require_admin(current_user: CurrentUser, db: DbSession):
     """
     Dependency to ensure the current user is an admin
     """

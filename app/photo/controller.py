@@ -1,9 +1,9 @@
 from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Depends
 from starlette import status
 from app.core.database import DbSession
-from app.auth.service import CurrentUser
+from app.auth.service import CurrentUser, require_admin
 from . import p_model
 from . import service
 from app.models.models import Photo
@@ -22,6 +22,9 @@ async def upload_photo(db: DbSession,
                        file: UploadFile = File(...),
                        venue_id: int = Form(...),
                        caption: Optional[str] = Form(None)):
+    # Check if user is admin
+    require_admin(current_user, db)
+
     current_user_id = current_user.get_id()
     photo_data = p_model.PhotoBase(venue_id=venue_id, caption=caption)
     photo = await service.create_photo(db, photo_data, current_user_id, file)
@@ -64,8 +67,26 @@ def get_venue_photos(db: DbSession, venue_id: int, after_photo_id:
 Optional[int] = None, limit: int = 20):
     photos = service.get_photos_by_venue(db, venue_id,
                                          after_photo_id, limit)
+
+    # Convert SQLAlchemy objects to Pydantic models
+    photo_responses = [
+        p_model.PhotoResponse(
+            photo_id=photo.photo_id,
+            img_url=photo.img_url,
+            caption=photo.caption,
+            file_size=photo.file_size,
+            content_type=photo.content_type,
+            user_id=photo.user_id,
+            username=photo.user.username,
+            venue_id=photo.venue_id,
+            venue_name=photo.venue.venue_name,
+            uploaded_at=photo.uploaded_at
+        )
+        for photo in photos
+    ]
+
     return {
-        'photos': photos,
+        'photos': photo_responses,
         "has_more": len(photos) == limit,
         'next_cursor': photos[-1].photo_id if photos else None
     }
@@ -73,8 +94,26 @@ Optional[int] = None, limit: int = 20):
 @router.get('/users/{user_id}', status_code=status.HTTP_200_OK)
 def get_user_photos(db: DbSession, user_id: int, after_photo_id: Optional[int] = None, limit: int = 20):
     photos = service.get_photos_by_user(db, user_id, after_photo_id, limit)
+
+    # Convert SQLAlchemy objects to Pydantic models
+    photo_responses = [
+        p_model.PhotoResponse(
+            photo_id=photo.photo_id,
+            img_url=photo.img_url,
+            caption=photo.caption,
+            file_size=photo.file_size,
+            content_type=photo.content_type,
+            user_id=photo.user_id,
+            username=photo.user.username,
+            venue_id=photo.venue_id,
+            venue_name=photo.venue.venue_name,
+            uploaded_at=photo.uploaded_at
+        )
+        for photo in photos
+    ]
+
     return {
-        'photos': photos,
+        'photos': photo_responses,
         "has_more": len(photos) == limit,
         'next_cursor': photos[-1].photo_id if photos else None
     }

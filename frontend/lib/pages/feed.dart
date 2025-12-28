@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:share_plus/share_plus.dart';
 import '../services/venue_service.dart';
 import '../services/review_service.dart';
 import '../services/rating_service.dart';
@@ -33,7 +34,7 @@ class _FeedPageState extends State<FeedPage> {
   Map<int, List<Photo>> _venuePhotos = {};
 
   // Map to store user's ratings for each venue (venueId -> ratingId)
-  Map<int, int?> _userRatings = {};
+  //Map<int, int?> _userRatings = {};
 
   @override
   void initState() {
@@ -230,6 +231,26 @@ class _FeedPageState extends State<FeedPage> {
     );
   }
 
+  void _shareVenue(Venue venue) {
+    final String shareText = '''
+Check out ${venue.venueName} on Clubbies!
+
+${venue.averageRating > 0 ? '⭐ ${venue.averageRating.toStringAsFixed(1)}/5 stars (${venue.reviewCount} reviews)' : '⭐ No ratings yet'}
+📍 ${venue.address}
+🎉 ${venue.venueType.isNotEmpty ? venue.venueType.first : 'Venue'} | ${venue.ageReq}+
+💵 \$${venue.price} | ${venue.capacity}
+🕐 ${venue.hours}
+${venue.description != null && venue.description!.isNotEmpty ? '\n${venue.description}' : ''}
+'''.trim();
+
+    final box = context.findRenderObject() as RenderBox?;
+    Share.share(
+      shareText,
+      subject: venue.venueName,
+      sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -259,21 +280,23 @@ class _FeedPageState extends State<FeedPage> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const PhotoUploadPage()),
-          );
+      floatingActionButton: _currentUser?.isAdmin == true
+          ? FloatingActionButton(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PhotoUploadPage()),
+                );
 
-          // Refresh photos if upload was successful
-          if (result == true) {
-            _loadVenuePhotos();
-          }
-        },
-        backgroundColor: Colors.deepPurple,
-        child: const Icon(Icons.add_a_photo, color: Colors.white),
-      ),
+                // Refresh photos if upload was successful
+                if (result == true) {
+                  _loadVenuePhotos();
+                }
+              },
+              backgroundColor: Colors.deepPurple,
+              child: const Icon(Icons.add_a_photo, color: Colors.white),
+            )
+          : null,
     );
   }
 
@@ -291,18 +314,6 @@ class _FeedPageState extends State<FeedPage> {
               color: Colors.white,
               letterSpacing: 1.5,
             ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 28),
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
-                onPressed: () {},
-              ),
-            ],
           ),
         ],
       ),
@@ -520,7 +531,7 @@ class _FeedPageState extends State<FeedPage> {
                           () => _showReviewsModal(venue),
                         ),
                         const SizedBox(width: 16),
-                        _buildActionButton(Icons.share_outlined, 'Share', () {}),
+                        _buildActionButton(Icons.share_outlined, 'Share', () => _shareVenue(venue)),
                         const Spacer(),
                         _buildSaveButton(),
                       ],
@@ -558,7 +569,7 @@ class _FeedPageState extends State<FeedPage> {
           // Display actual photo or placeholder
           if (hasPhoto)
             Image.network(
-              photos[0].imgUrl,
+              'http://127.0.0.1:8000${photos[0].imgUrl}',
               height: 250,
               width: double.infinity,
               fit: BoxFit.cover,
