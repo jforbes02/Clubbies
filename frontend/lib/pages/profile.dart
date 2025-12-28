@@ -532,7 +532,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     if (hasPhoto)
                       Image.network(
-                        photos[0].imgUrl,
+                        'http://127.0.0.1:8000${photos[0].imgUrl}',
                         height: 200,
                         width: double.infinity,
                         fit: BoxFit.cover,

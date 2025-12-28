@@ -294,18 +294,6 @@ class _FeedPageState extends State<FeedPage> {
               letterSpacing: 1.5,
             ),
           ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 28),
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
-                onPressed: () {},
-              ),
-            ],
-          ),
         ],
       ),
     );

@@ -439,7 +439,7 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
       fit: StackFit.expand,
       children: [
         Image.network(
-          _photos[0].imgUrl,
+          'http://127.0.0.1:8000${_photos[0].imgUrl}',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Container(
