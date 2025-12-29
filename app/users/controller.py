@@ -3,7 +3,7 @@ from app.core.database import DbSession
 from app.models.models import User
 from . import user_model
 from . import service
-from ..auth.service import CurrentUser
+from ..auth.service import CurrentUser, require_admin
 
 router = APIRouter(
     prefix="/users",
@@ -60,3 +60,52 @@ def search_users(username: str, db: DbSession, limit: int = 10):
         user_id=user.user_id,
         username=user.username
     ) for user in users]
+
+
+# Admin endpoints
+@router.get("/admin/all", response_model=list[user_model.UserResponse])
+def get_all_users(db: DbSession, current_user: CurrentUser, limit: int = 100):
+    """Get all users (admin only)"""
+    require_admin(current_user, db)
+    users = db.query(User).limit(limit).all()
+    return [user_model.UserResponse(
+        user_id=user.user_id,
+        username=user.username,
+        email=user.email,
+        age=user.age,
+        role=user.role
+    ) for user in users]
+
+
+@router.delete("/admin/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_admin(user_id: int, db: DbSession, current_user: CurrentUser):
+    """Delete a user by ID (admin only)"""
+    require_admin(current_user, db)
+
+    # Prevent admin from deleting themselves
+    if user_id == current_user.get_id():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+
+    service.delete_user(db, user_id)
+
+
+@router.put("/admin/{user_id}/role", status_code=status.HTTP_200_OK)
+def update_user_role(user_id: int, role_data: user_model.RoleUpdate, db: DbSession, current_user: CurrentUser):
+    """Update a user's role (admin only)"""
+    require_admin(current_user, db)
+
+    # Prevent admin from changing their own role
+    if user_id == current_user.get_id():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own role"
+        )
+
+    user = service.get_user_by_id(db, user_id)
+    user.role = role_data.role
+    db.commit()
+
+    return {"message": "User role updated successfully"}
