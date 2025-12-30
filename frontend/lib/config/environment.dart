@@ -8,10 +8,10 @@
 
 class Environment {
   // Set to false when building for production/App Store
-  static const bool isDevelopment = true;
+  static const bool isDevelopment = false;
 
   // Your production API URL (update this after deploying to Render)
-  static const String productionApiUrl = 'https://clubbies-api.onrender.com';
+  static const String productionApiUrl = 'https://clubbies.onrender.com';
 
   // Development API URL
   static const String developmentApiUrl = 'http://127.0.0.1:8000';
