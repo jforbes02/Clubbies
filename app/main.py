@@ -46,7 +46,10 @@ app.include_router(ratings_controller.router)
 app.include_router(photo_controller.router)
 
 # Mount static files for photo uploads
-app.mount("/static/photos", StaticFiles(directory="uploads/photos"), name="photos")
+if os.getenv("ENVIRONMENT") != "production":
+    import os.path
+    if os.path.exists("uploads/photos"):
+        app.mount("/static/photos", StaticFiles(directory="uploads/photos"), name="photos")
 
 # Health check endpoint
 @app.get("/")
