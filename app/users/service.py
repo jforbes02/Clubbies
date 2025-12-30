@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from . import user_model
-from app.models.models import User
+from app.models.models import User, Review, Photo, Rating
 from app.auth.service import verify_password, get_password_hash, CurrentUser
 import logging
 
@@ -66,9 +66,20 @@ def search_users(db: Session, username: str, limit: int = 10):
 def delete_user(db: Session, user_id: int):
     try:
         user = get_user_by_id(db, user_id)
+
+        # Delete all user's ratings first
+        db.query(Rating).filter(Rating.user_id == user_id).delete()
+
+        # Delete all user's photos
+        db.query(Photo).filter(Photo.user_id == user_id).delete()
+
+        # Delete all user's reviews
+        db.query(Review).filter(Review.user_id == user_id).delete()
+
+        # Now delete the user
         db.delete(user)
         db.commit()
-        logging.info(f"User {user_id} has been deleted")
+        logging.info(f"User {user_id} and all related data has been deleted")
     except HTTPException:
         raise
     except Exception as e:

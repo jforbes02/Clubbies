@@ -19,3 +19,7 @@ class PasswordChange(BaseModel):
 class UserSearchResponse(BaseModel):
     user_id: int
     username: str
+
+#model for updating user role (admin only)
+class RoleUpdate(BaseModel):
+    role: str

@@ -11,6 +11,7 @@ import '../models/review.dart';
 import '../models/photo.dart';
 import '../models/user.dart';
 import 'photo_upload.dart';
+import 'admin.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -315,6 +316,23 @@ ${venue.description != null && venue.description!.isNotEmpty ? '\n${venue.descri
               letterSpacing: 1.5,
             ),
           ),
+          if (_currentUser?.isAdmin == true)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminPage()),
+                  );
+                },
+                tooltip: 'Admin Dashboard',
+              ),
+            ),
         ],
       ),
     );
