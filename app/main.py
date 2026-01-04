@@ -1,7 +1,6 @@
 import os
 import uvicorn
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 # Import routers
@@ -17,6 +16,8 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.database import engine
 from app.models.models import Base
+import cloudinary
+import cloudinary.uploader
 
 load_dotenv()
 
@@ -45,12 +46,11 @@ app.include_router(reviews_controller.router)
 app.include_router(ratings_controller.router)
 app.include_router(photo_controller.router)
 
-# Mount static files for photo uploads (development only - production uses Cloudinary)
-if os.getenv("ENVIRONMENT") != "production":
-    import os.path
-    if os.path.exists("uploads/photos"):
-        app.mount("/static/photos", StaticFiles(directory="uploads/photos"), name="photos")
-
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
 # Health check endpoint
 @app.get("/")
 async def root():
