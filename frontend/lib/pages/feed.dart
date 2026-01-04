@@ -1075,8 +1075,6 @@ ${venue.description != null && venue.description!.isNotEmpty ? '\n${venue.descri
                         ),
                         const SizedBox(width: 16),
                         _buildActionButton(Icons.share_outlined, 'Share', () => _shareVenue(venue)),
-                        const Spacer(),
-                        _buildSaveButton(),
                       ],
                     ),
                   ],
@@ -1237,21 +1235,6 @@ ${venue.description != null && venue.description!.isNotEmpty ? '\n${venue.descri
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: _mintGreen.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _mintGreen.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: const Icon(Icons.bookmark_border, color: _mintGreen, size: 20),
     );
   }
 

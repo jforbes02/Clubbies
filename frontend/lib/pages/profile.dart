@@ -35,6 +35,17 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoadingReviews = true;
   String? _errorMessage;
 
+  // Dark theme colors with mint green accents
+  static const Color _backgroundDark = Color(0xFF0A0A0A);
+  static const Color _surfaceDark = Color(0xFF121212);
+  static const Color _cardDark = Color(0xFF1C1C1E);
+  static const Color _cardDarkElevated = Color(0xFF2C2C2E);
+  static const Color _mintGreen = Color(0xFFA8C5B4);
+  static const Color _mintGreenLight = Color(0xFFBED4C6);
+  static const Color _mintGreenDark = Color(0xFF7A9B87);
+  static const Color _textPrimary = Color(0xFFFFFFFF);
+  static const Color _textSecondary = Color(0xFFAAAAAA);
+
   @override
   void initState() {
     super.initState();
@@ -104,25 +115,29 @@ class _ProfilePageState extends State<ProfilePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.purple.shade700,
+        backgroundColor: _cardDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+        ),
         title: const Text(
           'Logout',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: _textPrimary),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to logout?',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: _textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: Text('Cancel', style: TextStyle(color: _textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.purple.shade600,
+              backgroundColor: Colors.red.shade400,
+              foregroundColor: Colors.white,
             ),
             child: const Text('Logout'),
           ),
@@ -150,9 +165,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Logged out successfully'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text('Logged out successfully', style: TextStyle(color: _textPrimary)),
+          backgroundColor: _mintGreenDark,
         ),
       );
     } catch (e) {
@@ -160,7 +175,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error logging out: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.red.shade400,
         ),
       );
     }
@@ -169,15 +184,16 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _backgroundDark,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Colors.purple.shade700,
-              Colors.blue.shade800,
-              Colors.purple.shade900,
+              _backgroundDark,
+              _surfaceDark,
+              _backgroundDark,
             ],
           ),
         ),
@@ -188,132 +204,33 @@ class _ProfilePageState extends State<ProfilePage> {
                   ? _buildErrorState()
                   : CustomScrollView(
                       slivers: [
-                        // Logout button in top right
+                        // Header with logout button
                         SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.logout, color: Colors.white, size: 28),
-                                  onPressed: _showLogoutDialog,
-                                  tooltip: 'Logout',
-                                ),
-                              ],
-                            ),
-                          ),
+                          child: _buildHeader(),
                         ),
 
                         // Profile Picture and Name
                         SliverToBoxAdapter(
-                          child: Column(
-                            children: [
-                              // Profile Picture
-                              Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: const CircleAvatar(
-                                  radius: 60,
-                                  backgroundColor: Colors.white,
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 70,
-                                    color: Colors.purple,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
+                          child: _buildProfileSection(),
+                        ),
 
-                              // Username
-                              Text(
-                                _currentUser?.username ?? 'User',
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
+                        // Stats Section
+                        SliverToBoxAdapter(
+                          child: _buildStatsSection(),
+                        ),
 
-                              // Age (if available)
-                              if (_currentUser?.age != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Age: ${_currentUser!.age}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 32),
-
-                              // Rated Venues Section Header
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.star, color: Colors.amber, size: 24),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'My Rated Venues',
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white.withValues(alpha: 0.95),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                        // Rated Venues Section Header
+                        SliverToBoxAdapter(
+                          child: _buildSectionHeader(
+                            icon: Icons.star,
+                            title: 'My Rated Venues',
+                            count: _ratedVenues.length,
                           ),
                         ),
 
                         // Rated Venues List
                         _ratedVenues.isEmpty
-                            ? SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(40.0),
-                                  child: Center(
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.star_border,
-                                          size: 64,
-                                          color: Colors.white.withValues(alpha: 0.5),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'No rated venues yet',
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.7),
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Start rating venues to see them here!',
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.6),
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              )
+                            ? SliverToBoxAdapter(child: _buildEmptyVenuesState())
                             : SliverPadding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                                 sliver: SliverList(
@@ -331,22 +248,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
                         // Reviews Section Header
                         SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20.0, 32.0, 20.0, 16.0),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.rate_review, color: Colors.white, size: 24),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'My Reviews',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white.withValues(alpha: 0.95),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          child: _buildSectionHeader(
+                            icon: Icons.rate_review,
+                            title: 'My Reviews',
+                            count: _reviews.length,
                           ),
                         ),
 
@@ -357,36 +262,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               padding: const EdgeInsets.all(40.0),
                               child: Center(
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(_mintGreen),
                                 ),
                               ),
                             ),
                           )
                         else if (_reviews.isEmpty)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.all(40.0),
-                              child: Center(
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.rate_review_outlined,
-                                      size: 64,
-                                      color: Colors.white.withValues(alpha: 0.5),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'No reviews yet',
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.7),
-                                        fontSize: 18,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
+                          SliverToBoxAdapter(child: _buildEmptyReviewsState())
                         else
                           SliverPadding(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -414,19 +296,414 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _mintGreen.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.person, color: _mintGreen, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Profile',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: _textPrimary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.red.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.logout, color: Colors.red.shade400, size: 22),
+              onPressed: _showLogoutDialog,
+              tooltip: 'Logout',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          // Profile Picture with glow effect
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: _mintGreen.withValues(alpha: 0.3),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _mintGreen,
+                    _mintGreenDark,
+                  ],
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: _cardDark,
+                child: Icon(
+                  Icons.person,
+                  size: 70,
+                  color: _mintGreen.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Username
+          Text(
+            _currentUser?.username ?? 'User',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: _textPrimary,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+          // Age badge (if available)
+          if (_currentUser?.age != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: _mintGreen.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _mintGreen.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cake, color: _mintGreen, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${_currentUser!.age} years old',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _mintGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Admin badge if applicable
+          if (_currentUser?.isAdmin == true) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.amber.withValues(alpha: 0.2),
+                    Colors.orange.withValues(alpha: 0.2),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.amber.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.admin_panel_settings, color: Colors.amber, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Admin',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.amber,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: _cardDark.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _mintGreen.withValues(alpha: 0.1),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildStatItem(
+                  icon: Icons.star,
+                  value: _ratedVenues.length.toString(),
+                  label: 'Rated',
+                ),
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: _cardDarkElevated,
+                ),
+                _buildStatItem(
+                  icon: Icons.rate_review,
+                  value: _reviews.length.toString(),
+                  label: 'Reviews',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: _mintGreen.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: _mintGreen, size: 22),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: _textPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: _textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    required int count,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20.0, 32.0, 20.0, 16.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _mintGreen.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: _mintGreen, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _textPrimary,
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _cardDarkElevated,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: _mintGreen,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyVenuesState() {
+    return Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _mintGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.star_border,
+                size: 50,
+                color: _mintGreen.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No rated venues yet',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start rating venues to see them here!',
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyReviewsState() {
+    return Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _mintGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.rate_review_outlined,
+                size: 50,
+                color: _mintGreen.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No reviews yet',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Share your experiences with the community!',
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoadingState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            valueColor: AlwaysStoppedAnimation<Color>(_mintGreen),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
             'Loading profile...',
             style: TextStyle(
-              color: Colors.white,
+              color: _textSecondary,
               fontSize: 16,
             ),
           ),
@@ -442,38 +719,41 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.white,
-              size: 64,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.error_outline, color: Colors.red.shade400, size: 48),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Error loading profile',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
+            const Text(
+              'Error Loading Profile',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               _errorMessage ?? 'Unknown error occurred',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 14,
-              ),
+              style: TextStyle(color: _textSecondary),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _loadUserProfile,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.purple.shade600,
+                backgroundColor: _mintGreen,
+                foregroundColor: _backgroundDark,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -497,156 +777,199 @@ class _ProfilePageState extends State<ProfilePage> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
+          color: _cardDark.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: _mintGreen.withValues(alpha: 0.1),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: _mintGreen.withValues(alpha: 0.05),
+              blurRadius: 40,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Venue Image
-              Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.purple.shade300,
-                      Colors.blue.shade400,
-                      Colors.pink.shade300,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Venue Image
+                Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _cardDarkElevated,
+                        _mintGreenDark.withValues(alpha: 0.3),
+                        _cardDark,
+                      ],
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      if (hasPhoto)
+                        Image.network(
+                          '${Environment.apiBaseUrl}${photos[0].imgUrl}',
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildPlaceholder(venue);
+                          },
+                        )
+                      else
+                        _buildPlaceholder(venue),
+
+                      // Rating badge
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _cardDark.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: _mintGreen.withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.star, color: _mintGreen, size: 18),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    venue.averageRating.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      color: _textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Age requirement badge
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: _mintGreen.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${venue.ageReq}+',
+                            style: TextStyle(
+                              color: _backgroundDark,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    if (hasPhoto)
-                      Image.network(
-                        '${Environment.apiBaseUrl}${photos[0].imgUrl}',
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildPlaceholder(venue);
-                        },
-                      )
-                    else
-                      _buildPlaceholder(venue),
 
-                    // Rating badge
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 18),
-                            const SizedBox(width: 4),
-                            Text(
-                              venue.averageRating.toStringAsFixed(1),
+                // Venue Info
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              venue.venueName,
                               style: const TextStyle(
-                                color: Colors.white,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
+                                color: _textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (venue.venueType.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _mintGreen.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: _mintGreen.withValues(alpha: 0.4),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                venue.venueType.first,
+                                style: const TextStyle(
+                                  color: _mintGreen,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, color: _mintGreenLight, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              venue.address,
+                              style: TextStyle(
+                                color: _textSecondary,
                                 fontSize: 14,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildInfoChip(Icons.access_time, venue.hours),
+                          _buildInfoChip(Icons.people, venue.capacity),
+                          _buildInfoChip(Icons.attach_money, '\$${venue.price}'),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-
-              // Venue Info
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            venue.venueName,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        if (venue.venueType.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Text(
-                              venue.venueType.first,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Colors.white70, size: 16),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            venue.address,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildInfoChip(Icons.access_time, venue.hours),
-                        _buildInfoChip(Icons.people, venue.capacity),
-                        _buildInfoChip(Icons.attach_money, '\$${venue.price}'),
-                        _buildInfoChip(Icons.cake, '${venue.ageReq}+'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -655,18 +978,25 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.nightlife_outlined,
-            size: 60,
-            color: Colors.white.withValues(alpha: 0.5),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _mintGreen.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.nightlife_outlined,
+              size: 50,
+              color: _mintGreen.withValues(alpha: 0.6),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             venue.venueName,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: _textSecondary,
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -676,19 +1006,23 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildInfoChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(15),
+        color: _cardDarkElevated.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 14),
-          const SizedBox(width: 4),
+          Icon(icon, color: _mintGreenLight, size: 14),
+          const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: TextStyle(color: _textSecondary, fontSize: 12),
           ),
         ],
       ),
@@ -698,18 +1032,22 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildReviewCard(Review review) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(16),
+        color: _cardDark.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _mintGreen.withValues(alpha: 0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Padding(
@@ -717,49 +1055,63 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Venue name
+                // Venue name header
                 Row(
                   children: [
-                    const Icon(Icons.place, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _mintGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.place, color: _mintGreen, size: 18),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         review.venueName,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: _textPrimary,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 // Review text
-                Text(
-                  review.reviewText,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 15,
-                    height: 1.4,
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _cardDarkElevated.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    review.reviewText,
+                    style: TextStyle(
+                      color: _textPrimary.withValues(alpha: 0.9),
+                      fontSize: 15,
+                      height: 1.5,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 // Date
                 Row(
                   children: [
                     Icon(
-                      Icons.calendar_today,
+                      Icons.access_time,
                       size: 14,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: _textSecondary,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       _formatDate(review.createdAt),
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: _textSecondary,
                         fontSize: 13,
                       ),
                     ),

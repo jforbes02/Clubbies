@@ -21,6 +21,12 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
   late AnimationController _wiggleController;
   late Animation<double> _wiggleAnimation;
 
+  // Dark theme colors
+  static const Color _backgroundDark = Color(0xFF0A0A0A);
+  static const Color _cardDark = Color(0xFF1C1C1E);
+  static const Color _mintGreen = Color(0xFFA8C5B4);
+  static const Color _textSecondary = Color(0xFFAAAAAA);
+
   @override
   void initState() {
     super.initState();
@@ -71,17 +77,16 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
 
         return Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.purple.shade400,
-                Colors.purple.shade600,
-              ],
+            color: _cardDark,
+            border: Border(
+              top: BorderSide(
+                color: _mintGreen.withValues(alpha: 0.15),
+                width: 1,
+              ),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
+                color: Colors.black.withValues(alpha: 0.4),
                 blurRadius: 20,
                 offset: const Offset(0, -5),
               ),
@@ -93,7 +98,7 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: _backgroundDark.withValues(alpha: 0.8),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -157,9 +162,13 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
         // Handle Map tab (not implemented yet)
         if (index == 3) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Map coming soon!'),
-              duration: Duration(milliseconds: 500),
+            SnackBar(
+              backgroundColor: _cardDark,
+              content: const Text(
+                'Map coming soon!',
+                style: TextStyle(color: Colors.white),
+              ),
+              duration: const Duration(milliseconds: 500),
             ),
           );
           return;
@@ -177,8 +186,12 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: isSelected
                 ? BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: _mintGreen.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _mintGreen.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   )
                 : null,
             child: Column(
@@ -186,18 +199,14 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
               children: [
                 Icon(
                   icon,
-                  color: isSelected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.6),
+                  color: isSelected ? _mintGreen : _textSecondary,
                   size: isSelected ? 28 : 24,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   label,
                   style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.6),
+                    color: isSelected ? _mintGreen : _textSecondary,
                     fontSize: isSelected ? 12 : 10,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),

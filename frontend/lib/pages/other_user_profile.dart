@@ -6,7 +6,7 @@ import '../services/user_service.dart';
 import '../services/review_service.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
-  final User searchUser; // User from search results (has userId, username)
+  final User searchUser;
 
   const OtherUserProfilePage({super.key, required this.searchUser});
 
@@ -18,7 +18,17 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   final UserService _userService = UserService();
   final ReviewService _reviewService = ReviewService();
 
-  User? _fullUserProfile; // Full profile with email, age
+  // Dark theme colors with mint green accents
+  static const Color _backgroundDark = Color(0xFF0A0A0A);
+  static const Color _surfaceDark = Color(0xFF121212);
+  static const Color _cardDark = Color(0xFF1C1C1E);
+  static const Color _cardDarkElevated = Color(0xFF2C2C2E);
+  static const Color _mintGreen = Color(0xFFA8C5B4);
+  static const Color _mintGreenDark = Color(0xFF7A9B87);
+  static const Color _textPrimary = Color(0xFFFFFFFF);
+  static const Color _textSecondary = Color(0xFFAAAAAA);
+
+  User? _fullUserProfile;
   List<Review> _reviews = [];
 
   bool _isLoadingProfile = true;
@@ -67,204 +77,348 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingProfile) {
-      return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.purple.shade700,
-                Colors.blue.shade800,
-                Colors.purple.shade900,
-              ],
-            ),
-          ),
-          child: _buildLoadingState(),
-        ),
-      );
-    }
-
-    if (_errorMessage != null) {
-      return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.purple.shade700,
-                Colors.blue.shade800,
-                Colors.purple.shade900,
-              ],
-            ),
-          ),
-          child: _buildErrorState(),
-        ),
-      );
-    }
-
     return Scaffold(
+      backgroundColor: _backgroundDark,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Colors.purple.shade700,
-              Colors.blue.shade800,
-              Colors.purple.shade900,
+              _backgroundDark,
+              _surfaceDark,
+              _backgroundDark,
             ],
           ),
         ),
-        child: CustomScrollView(
-          slivers: [
-            // App Bar with back button
-            SliverAppBar(
-              expandedHeight: 0,
-              floating: false,
-              pinned: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-
-            // Profile Header
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  // Profile Picture
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        size: 70,
-                        color: Colors.purple,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Username
-                  Text(
-                    _fullUserProfile?.username ?? widget.searchUser.username,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-
-                  // Age (if available)
-                  if (_fullUserProfile?.age != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Age: ${_fullUserProfile!.age}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 32),
-
-                  // Reviews Section Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.rate_review, color: Colors.white, size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Reviews',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white.withValues(alpha: 0.95),
+        child: _isLoadingProfile
+            ? _buildLoadingState()
+            : _errorMessage != null
+                ? _buildErrorState()
+                : CustomScrollView(
+                    slivers: [
+                      // App Bar with back button
+                      SliverAppBar(
+                        expandedHeight: 0,
+                        floating: false,
+                        pinned: true,
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        leading: Container(
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _cardDark.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back, color: _textPrimary),
+                            onPressed: () => Navigator.pop(context),
                           ),
                         ),
-                      ],
+                      ),
+
+                      // Profile Header
+                      SliverToBoxAdapter(
+                        child: _buildProfileHeader(),
+                      ),
+
+                      // Stats Section
+                      SliverToBoxAdapter(
+                        child: _buildStatsSection(),
+                      ),
+
+                      // Reviews Section Header
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20.0, 32.0, 20.0, 16.0),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _mintGreen.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(Icons.rate_review, color: _mintGreen, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Reviews',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: _textPrimary,
+                                ),
+                              ),
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: _cardDarkElevated,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _reviews.length.toString(),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: _mintGreen,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Reviews List
+                      if (_isLoadingReviews)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(40.0),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(_mintGreen),
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (_reviews.isEmpty)
+                        SliverToBoxAdapter(
+                          child: _buildEmptyReviewsState(),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                  child: _buildReviewCard(_reviews[index]),
+                                );
+                              },
+                              childCount: _reviews.length,
+                            ),
+                          ),
+                        ),
+
+                      // Bottom padding
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 100),
+                      ),
+                    ],
+                  ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          // Profile Picture with glow effect
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: _mintGreen.withValues(alpha: 0.3),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _mintGreen,
+                    _mintGreenDark,
+                  ],
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: _cardDark,
+                child: Icon(
+                  Icons.person,
+                  size: 70,
+                  color: _mintGreen.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Username
+          Text(
+            _fullUserProfile?.username ?? widget.searchUser.username,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: _textPrimary,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+          // Age badge (if available)
+          if (_fullUserProfile?.age != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: _mintGreen.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _mintGreen.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cake, color: _mintGreen, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${_fullUserProfile!.age} years old',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _mintGreen,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
+          ],
 
-            // Reviews List
-            if (_isLoadingReviews)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(40.0),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: _cardDark.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _mintGreen.withValues(alpha: 0.1),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildStatItem(
+                  icon: Icons.rate_review,
+                  value: _reviews.length.toString(),
+                  label: 'Reviews',
                 ),
-              )
-            else if (_reviews.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(40.0),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.rate_review_outlined,
-                          size: 64,
-                          color: Colors.white.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No reviews yet',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: _buildReviewCard(_reviews[index]),
-                      );
-                    },
-                    childCount: _reviews.length,
-                  ),
-                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: _mintGreen.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: _mintGreen, size: 22),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: _textPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: _textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyReviewsState() {
+    return Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _mintGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-
-            // Bottom padding
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
+              child: Icon(
+                Icons.rate_review_outlined,
+                size: 50,
+                color: _mintGreen.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No reviews yet',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This user hasn\'t written any reviews',
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -273,18 +427,18 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            valueColor: AlwaysStoppedAnimation<Color>(_mintGreen),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
             'Loading profile...',
             style: TextStyle(
-              color: Colors.white,
+              color: _textSecondary,
               fontSize: 16,
             ),
           ),
@@ -300,30 +454,30 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.white,
-              size: 64,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.error_outline, color: Colors.red.shade400, size: 48),
             ),
             const SizedBox(height: 16),
             const Text(
-              'Error loading profile',
+              'Error Loading Profile',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
+                color: _textPrimary,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               _errorMessage ?? 'Unknown error occurred',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 14,
-              ),
+              style: TextStyle(color: _textSecondary),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: () {
                 setState(() {
@@ -335,9 +489,12 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.purple.shade600,
+                backgroundColor: _mintGreen,
+                foregroundColor: _backgroundDark,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -349,18 +506,22 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   Widget _buildReviewCard(Review review) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(16),
+        color: _cardDark.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _mintGreen.withValues(alpha: 0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Padding(
@@ -368,49 +529,63 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Venue name
+                // Venue name header
                 Row(
                   children: [
-                    const Icon(Icons.place, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _mintGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.place, color: _mintGreen, size: 18),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         review.venueName,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: _textPrimary,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 // Review text
-                Text(
-                  review.reviewText,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 15,
-                    height: 1.4,
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _cardDarkElevated.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    review.reviewText,
+                    style: TextStyle(
+                      color: _textPrimary.withValues(alpha: 0.9),
+                      fontSize: 15,
+                      height: 1.5,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 // Date
                 Row(
                   children: [
                     Icon(
-                      Icons.calendar_today,
+                      Icons.access_time,
                       size: 14,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: _textSecondary,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       _formatDate(review.createdAt),
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: _textSecondary,
                         fontSize: 13,
                       ),
                     ),

@@ -21,6 +21,16 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
   final ReviewService _reviewService = ReviewService();
   final RatingService _ratingService = RatingService();
 
+  // Dark theme colors with mint green accents
+  static const Color _backgroundDark = Color(0xFF0A0A0A);
+  static const Color _surfaceDark = Color(0xFF121212);
+  static const Color _cardDark = Color(0xFF1C1C1E);
+  static const Color _cardDarkElevated = Color(0xFF2C2C2E);
+  static const Color _mintGreen = Color(0xFFA8C5B4);
+  static const Color _mintGreenDark = Color(0xFF7A9B87);
+  static const Color _textPrimary = Color(0xFFFFFFFF);
+  static const Color _textSecondary = Color(0xFFAAAAAA);
+
   List<Photo> _photos = [];
   List<Review> _reviews = [];
   bool _isLoadingPhotos = true;
@@ -66,7 +76,6 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
   }
 
   Future<void> _showRatingDialog() async {
-    // Check if user has already rated this venue
     Map<String, dynamic>? existingRatingData;
     try {
       existingRatingData = await _ratingService.getUserRating(widget.venue.venueId);
@@ -75,6 +84,7 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
     }
 
     final double? existingRating = existingRatingData?['rating'];
+    final int? ratingId = existingRatingData?['ratingId'];
     double selectedRating = existingRating ?? 5.0;
     final hasExistingRating = existingRating != null;
 
@@ -82,19 +92,23 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.purple.shade700,
+          backgroundColor: _cardDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: _mintGreen.withValues(alpha: 0.2)),
+          ),
           title: Text(
             hasExistingRating ? 'Update Rating' : 'Rate ${widget.venue.venueName}',
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: _textPrimary),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 hasExistingRating
-                    ? 'Your current rating: ${existingRating.toStringAsFixed(1)} ⭐'
+                    ? 'Your current rating: ${existingRating.toStringAsFixed(1)}'
                     : 'Tap a star to rate:',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(color: _textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 16),
               Row(
@@ -110,8 +124,8 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                     child: Icon(
                       Icons.star,
                       color: rating <= selectedRating
-                          ? Colors.amber
-                          : Colors.white.withValues(alpha: 0.3),
+                          ? _mintGreen
+                          : _cardDarkElevated,
                       size: 48,
                     ),
                   );
@@ -120,9 +134,70 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
             ],
           ),
           actions: [
+            if (hasExistingRating)
+              TextButton(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: _cardDark,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                      ),
+                      title: const Text(
+                        'Delete Rating?',
+                        style: TextStyle(color: _textPrimary),
+                      ),
+                      content: Text(
+                        'Are you sure you want to remove your rating?',
+                        style: TextStyle(color: _textSecondary),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text('Cancel', style: TextStyle(color: _textSecondary)),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade400,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true && ratingId != null) {
+                    try {
+                      await _ratingService.deleteRating(ratingId);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: _cardDarkElevated,
+                          content: const Text('Rating deleted!', style: TextStyle(color: _textPrimary)),
+                        ),
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: Colors.red.shade400,
+                          content: Text('Error: ${e.toString()}'),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Text('Delete Rating', style: TextStyle(color: Colors.red.shade400)),
+              ),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+              child: Text('Cancel', style: TextStyle(color: _textSecondary)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -135,8 +210,10 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
+                      backgroundColor: _mintGreenDark,
                       content: Text(
                         hasExistingRating ? 'Rating updated!' : 'Rating submitted!',
+                        style: const TextStyle(color: _textPrimary),
                       ),
                     ),
                   );
@@ -144,13 +221,16 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                   if (!context.mounted) return;
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${e.toString()}')),
+                    SnackBar(
+                      backgroundColor: Colors.red.shade400,
+                      content: Text('Error: ${e.toString()}'),
+                    ),
                   );
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber,
-                foregroundColor: Colors.purple.shade900,
+                backgroundColor: _mintGreen,
+                foregroundColor: _backgroundDark,
               ),
               child: Text(hasExistingRating ? 'Update' : 'Submit'),
             ),
@@ -163,15 +243,16 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _backgroundDark,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.purple.shade200,
-              Colors.purple.shade400,
-              Colors.purple.shade600,
+              _backgroundDark,
+              _surfaceDark,
+              _backgroundDark,
             ],
           ),
         ),
@@ -181,10 +262,17 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
             SliverAppBar(
               expandedHeight: 300,
               pinned: true,
-              backgroundColor: Colors.purple.shade600,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
+              backgroundColor: _surfaceDark,
+              leading: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _cardDark.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: _textPrimary),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
               flexibleSpace: FlexibleSpaceBar(
                 background: _buildHeaderImage(),
@@ -201,6 +289,7 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                     // Venue Name and Type
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Text(
@@ -208,98 +297,116 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: _textPrimary,
                             ),
                           ),
                         ),
                         if (widget.venue.venueType.isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: _mintGreen.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: _mintGreen.withValues(alpha: 0.4),
+                                width: 1,
+                              ),
                             ),
                             child: Text(
                               widget.venue.venueType.first,
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: _mintGreen,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    // Rating
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 28),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.venue.averageRating > 0
-                              ? widget.venue.averageRating.toStringAsFixed(1)
-                              : 'No ratings yet',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                    // Rating Section
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _cardDark,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _mintGreen.withValues(alpha: 0.1),
+                          width: 1,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '(${widget.venue.reviewCount} reviews)',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 16,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _mintGreen.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.star, color: _mintGreen, size: 28),
                           ),
-                        ),
-                        const Spacer(),
-                        ElevatedButton.icon(
-                          onPressed: _showRatingDialog,
-                          icon: const Icon(Icons.star_border, size: 20),
-                          label: const Text('Rate'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.amber,
-                            foregroundColor: Colors.purple.shade900,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.venue.averageRating > 0
+                                      ? widget.venue.averageRating.toStringAsFixed(1)
+                                      : 'No ratings yet',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: _textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  '${widget.venue.reviewCount} reviews',
+                                  style: TextStyle(
+                                    color: _textSecondary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                          ElevatedButton.icon(
+                            onPressed: _showRatingDialog,
+                            icon: const Icon(Icons.star_border, size: 20),
+                            label: const Text('Rate'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _mintGreen,
+                              foregroundColor: _backgroundDark,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
 
                     // Venue Info Cards
-                    _buildInfoCard(
-                      Icons.location_on,
-                      'Address',
-                      widget.venue.address,
-                    ),
+                    _buildInfoCard(Icons.location_on, 'Address', widget.venue.address),
                     const SizedBox(height: 12),
-                    _buildInfoCard(
-                      Icons.access_time,
-                      'Hours',
-                      widget.venue.hours,
-                    ),
+                    _buildInfoCard(Icons.access_time, 'Hours', widget.venue.hours),
                     const SizedBox(height: 12),
-                    _buildInfoCard(
-                      Icons.people,
-                      'Capacity',
-                      widget.venue.capacity,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInfoCard(
-                      Icons.attach_money,
-                      'Price',
-                      '\$${widget.venue.price}',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInfoCard(
-                      Icons.cake,
-                      'Age Requirement',
-                      '${widget.venue.ageReq}+',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildCompactInfoCard(Icons.people, 'Capacity', widget.venue.capacity),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildCompactInfoCard(Icons.attach_money, 'Price', '\$${widget.venue.price}'),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildCompactInfoCard(Icons.cake, 'Age', '${widget.venue.ageReq}+'),
+                        ),
+                      ],
                     ),
 
                     // Description
@@ -308,26 +415,36 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(15),
+                          color: _cardDark,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _mintGreen.withValues(alpha: 0.1),
+                            width: 1,
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Description',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                            Row(
+                              children: [
+                                Icon(Icons.description, color: _mintGreen, size: 20),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'About',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: _textPrimary,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 12),
                             Text(
                               widget.venue.description!,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 16,
+                                color: _textPrimary.withValues(alpha: 0.9),
+                                fontSize: 15,
                                 height: 1.5,
                               ),
                             ),
@@ -338,27 +455,88 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
 
                     // Reviews Section
                     const SizedBox(height: 24),
-                    const Text(
-                      'Reviews',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _mintGreen.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.rate_review, color: _mintGreen, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Reviews',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: _textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _cardDarkElevated,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _reviews.length.toString(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: _mintGreen,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     _isLoadingReviews
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32.0),
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(_mintGreen),
+                              ),
                             ),
                           )
                         : _reviews.isEmpty
-                            ? Text(
-                                'No reviews yet. Be the first to review!',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  fontSize: 16,
+                            ? Container(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: _mintGreen.withValues(alpha: 0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.rate_review_outlined,
+                                        color: _mintGreen.withValues(alpha: 0.6),
+                                        size: 40,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No reviews yet',
+                                      style: TextStyle(
+                                        color: _textPrimary,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Be the first to review!',
+                                      style: TextStyle(
+                                        color: _textSecondary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               )
                             : Column(
@@ -384,15 +562,15 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.purple.shade300,
-              Colors.blue.shade400,
-              Colors.pink.shade300,
+              _cardDarkElevated,
+              _mintGreenDark.withValues(alpha: 0.3),
+              _cardDark,
             ],
           ),
         ),
-        child: const Center(
+        child: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            valueColor: AlwaysStoppedAnimation<Color>(_mintGreen),
           ),
         ),
       );
@@ -405,9 +583,9 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.purple.shade300,
-              Colors.blue.shade400,
-              Colors.pink.shade300,
+              _cardDarkElevated,
+              _mintGreenDark.withValues(alpha: 0.3),
+              _cardDark,
             ],
           ),
         ),
@@ -415,17 +593,24 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.nightlife_outlined,
-                size: 80,
-                color: Colors.white.withValues(alpha: 0.5),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: _mintGreen.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.nightlife_outlined,
+                  size: 60,
+                  color: _mintGreen.withValues(alpha: 0.6),
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 widget.venue.venueName,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 24,
+                  color: _textSecondary,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -448,9 +633,9 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.purple.shade300,
-                    Colors.blue.shade400,
-                    Colors.pink.shade300,
+                    _cardDarkElevated,
+                    _mintGreenDark.withValues(alpha: 0.3),
+                    _cardDark,
                   ],
                 ),
               ),
@@ -465,7 +650,7 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
               end: Alignment.bottomCenter,
               colors: [
                 Colors.transparent,
-                Colors.black.withValues(alpha: 0.7),
+                _backgroundDark.withValues(alpha: 0.8),
               ],
             ),
           ),
@@ -478,33 +663,81 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _mintGreen.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 24),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _mintGreen.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: _mintGreen, size: 22),
+          ),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 12,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: _textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: _textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactInfoCard(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _mintGreen.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: _mintGreen, size: 22),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: _textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: _textSecondary,
+              fontSize: 11,
+            ),
           ),
         ],
       ),
@@ -516,18 +749,26 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.05),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                child: const Icon(Icons.person, color: Colors.white, size: 20),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _mintGreen.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.person, color: _mintGreen, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -537,15 +778,16 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
                     Text(
                       '@${review.username}',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: _textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 15,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       _formatDateTime(review.createdAt),
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: _textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -554,13 +796,13 @@ class _VenueDetailPageState extends State<VenueDetailPage> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
             review.reviewText,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
+              color: _textPrimary.withValues(alpha: 0.9),
               fontSize: 14,
-              height: 1.4,
+              height: 1.5,
             ),
           ),
         ],
