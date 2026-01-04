@@ -22,6 +22,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   late AnimationController _controller;
   late Animation<double> _fanimation;
 
+  // Dark theme colors with mint green accents
+  static const Color _backgroundDark = Color(0xFF0A0A0A);
+  static const Color _surfaceDark = Color(0xFF121212);
+  static const Color _cardDark = Color(0xFF1C1C1E);
+  static const Color _mintGreen = Color(0xFFA8C5B4);
+  static const Color _mintGreenDark = Color(0xFF7A9B87);
+  static const Color _textPrimary = Color(0xFFFFFFFF);
+  static const Color _textSecondary = Color(0xFFAAAAAA);
+
   //formdata
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
@@ -64,14 +73,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
       return Scaffold(
+        backgroundColor: _backgroundDark,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
               colors: [
-                Colors.purple.shade200,
-                Colors.lightBlue.shade600,
+                _backgroundDark,
+                _surfaceDark,
+                _backgroundDark,
               ],
             ),
           ),
@@ -86,12 +97,27 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       opacity: _fanimation,
                       child: Column(
                         children: [
-                          Icon(Icons.nightlife, size:80, color:Colors.white,),
-                          SizedBox(height:16),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _mintGreen.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: _mintGreen.withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.nightlife,
+                              size: 64,
+                              color: _mintGreen,
+                            ),
+                          ),
+                          SizedBox(height:24),
                           Text('Clubbies', style:TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: _textPrimary,
                             letterSpacing: 2.0,
                           ),
                           ),
@@ -100,7 +126,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             isLogin ? 'Welcome Back' : 'Join the Night',
                             style: TextStyle(
                               fontSize: 18,
-                              color: Colors.white.withOpacity(0.9),
+                              color: _textSecondary,
                               fontWeight: FontWeight.w300,
                             ),
                           ),
@@ -117,10 +143,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           child: Container(
                             padding: EdgeInsets.all(24),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(.2),
+                              color: _cardDark.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(30),
                               border: Border.all(
-                                color: Colors.white.withOpacity(.3),
+                                color: _mintGreen.withValues(alpha: 0.2),
                                 width: 1.5,
                               ),
                             ),
@@ -186,7 +212,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text(isLogin ? '✅ Login Successful!' : '✅ Registration Successful!'),
-                                              backgroundColor: Colors.green,
+                                              backgroundColor: _mintGreenDark,
                                               duration: Duration(seconds: 2),
                                             ),
                                           );
@@ -203,7 +229,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text('❌ Error: ${e.toString()}'),
-                                              backgroundColor: Colors.red,
+                                              backgroundColor: Colors.red.shade900,
                                               duration: Duration(seconds: 3),
                                             ),
                                           );
@@ -217,7 +243,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
                                             content: Text('❌ Please fill in all fields correctly.'),
-                                            backgroundColor: Colors.red,
+                                            backgroundColor: Colors.red.shade900,
                                             duration: Duration(seconds: 2),
                                           ),
                                         );
@@ -235,7 +261,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                        ? "Don't have an account? Sign Up"
                                         :"Already have an account? Login",
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: _mintGreen,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -265,62 +291,55 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       bool obscureText = false,
       TextInputType keyboardType = TextInputType.text,
     }) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.1),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: Colors.white.withOpacity(.2),
-                width: 1.0,
-              ),
-            ),
-            child: TextFormField(
-              controller: controller,
-              obscureText: obscureText,
-              keyboardType: keyboardType,
-              style: TextStyle(color: Colors.white, fontSize: 16),
-              decoration: InputDecoration(
-                labelText: label,
-                labelStyle: TextStyle(
-                  color: Colors.white.withOpacity(.8),
-                  fontSize: 16,
-                ),
-                prefixIcon: Icon(icon, color: Colors.white.withOpacity(.8)),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your $label';
-                }
-                // Additional validation for specific fields
-                if (label == 'Username' && value.trim().length < 4) {
-                  return 'Username must be at least 4 characters';
-                }
-                if (label == 'Password' && value.trim().length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                if (label == 'Age') {
-                  final age = int.tryParse(value.trim());
-                  if (age == null) {
-                    return 'Please enter a valid age';
-                  }
-                  if (age < 16) {
-                    return 'You must be at least 16 years old';
-                  }
-                }
-                if (label == 'Email' && !value.contains('@')) {
-                  return 'Please enter a valid email';
-                }
-                return null;
-              },
-
-            ),
+      return Container(
+        decoration: BoxDecoration(
+          color: _surfaceDark,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: _mintGreen.withValues(alpha: 0.2),
+            width: 1.0,
           ),
+        ),
+        child: TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          style: TextStyle(color: _textPrimary, fontSize: 16),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: _textSecondary,
+              fontSize: 16,
+            ),
+            prefixIcon: Icon(icon, color: _mintGreen.withValues(alpha: 0.7)),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter your $label';
+            }
+            // Additional validation for specific fields
+            if (label == 'Username' && value.trim().length < 4) {
+              return 'Username must be at least 4 characters';
+            }
+            if (label == 'Password' && value.trim().length < 6) {
+              return 'Password must be at least 6 characters';
+            }
+            if (label == 'Age') {
+              final age = int.tryParse(value.trim());
+              if (age == null) {
+                return 'Please enter a valid age';
+              }
+              if (age < 16) {
+                return 'You must be at least 16 years old';
+              }
+            }
+            if (label == 'Email' && !value.contains('@')) {
+              return 'Please enter a valid email';
+            }
+            return null;
+          },
         ),
       );
     }
@@ -330,52 +349,52 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       required String text,
       bool isLoading = false,
     }) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(25),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            width: double.infinity,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.3),
-                  Colors.white.withOpacity(0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: Colors.white.withOpacity(.3),
-                width: 1.5,
-              ),
+      return Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              _mintGreen,
+              _mintGreenDark,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: _mintGreen.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: Offset(0, 6),
             ),
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: isLoading
-                  ? SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      text,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: isLoading ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
             ),
           ),
+          child: isLoading
+              ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(_backgroundDark),
+                  ),
+                )
+              : Text(
+                  text,
+                  style: TextStyle(
+                    color: _backgroundDark,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
         ),
       );
     }
@@ -390,7 +409,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(result['message']),
-                  backgroundColor: result['success'] ? Colors.green : Colors.red,
+                  backgroundColor: result['success'] ? _mintGreenDark : Colors.red.shade900,
                   duration: Duration(seconds: 3),
                 ),
               );
@@ -405,20 +424,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 width: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(_mintGreen),
                 ),
               )
-            : Icon(Icons.wifi_find, size: 18, color: Colors.white),
+            : Icon(Icons.wifi_find, size: 18, color: _mintGreen),
         label: Text(
           'Test API Connection',
           style: TextStyle(
-            color: Colors.white,
+            color: _mintGreen,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.white.withOpacity(0.5), width: 1.5),
+          side: BorderSide(color: _mintGreen.withValues(alpha: 0.5), width: 1.5),
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),

@@ -14,6 +14,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
+  // Dark theme colors with mint green accents
+  static const Color _backgroundDark = Color(0xFF0A0A0A);
+  static const Color _surfaceDark = Color(0xFF121212);
+  static const Color _cardDark = Color(0xFF1C1C1E);
+  static const Color _mintGreen = Color(0xFFA8C5B4);
+  static const Color _mintGreenDark = Color(0xFF7A9B87);
+  static const Color _textPrimary = Color(0xFFFFFFFF);
+  static const Color _textSecondary = Color(0xFFAAAAAA);
+
   final Map<String, AnimationController> _bubbleControllers = {};
   final Map<String, Animation<double>> _bubbleAnimations = {};
   final Map<String, AnimationController> _wiggleControllers = {};
@@ -85,7 +94,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       SnackBar(
         content: Text('${bubbleName.toUpperCase()} pressed!'),
         duration: const Duration(seconds: 1),
-        backgroundColor: Colors.purple.shade400,
+        backgroundColor: _mintGreenDark,
       ),
     );
   }
@@ -93,14 +102,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _backgroundDark,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Colors.purple.shade200,
-              Colors.lightBlue.shade600,
+              _backgroundDark,
+              _surfaceDark,
+              _backgroundDark,
             ],
           ),
         ),
@@ -118,12 +129,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'Clubbies',
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: _textPrimary,
                               letterSpacing: 1.5,
                             ),
                           ),
@@ -131,16 +142,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             'Welcome back!',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Colors.white.withOpacity(0.8),
+                              color: _textSecondary,
                               fontWeight: FontWeight.w300,
                             ),
                           ),
                         ],
                       ),
-                      Icon(
-                        Icons.nightlife,
-                        size: 40,
-                        color: Colors.white,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _mintGreen.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.nightlife,
+                          size: 32,
+                          color: _mintGreen,
+                        ),
                       ),
                     ],
                   ),
@@ -158,7 +176,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           name: 'home',
                           icon: Icons.home_rounded,
                           label: 'Home',
-                          color: Colors.blue.shade300,
                           onPressed: () {
                             Navigator.push(
                               context,
@@ -170,7 +187,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           name: 'search',
                           icon: Icons.search_rounded,
                           label: 'Search',
-                          color: Colors.purple.shade300,
                           onPressed: () {
                             Navigator.push(
                               context,
@@ -182,7 +198,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           name: 'profile',
                           icon: Icons.person_rounded,
                           label: 'Profile',
-                          color: Colors.pink.shade300,
                           onPressed: () {
                             Navigator.push(
                               context,
@@ -194,7 +209,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           name: 'reviews',
                           icon: Icons.star_rounded,
                           label: 'Reviews',
-                          color: Colors.amber.shade300,
                         ),
                       ],
                     ),
@@ -212,7 +226,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required String name,
     required IconData icon,
     required String label,
-    required Color color,
     VoidCallback? onPressed,
   }) {
     return ScaleTransition(
@@ -262,22 +275,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Colors.white.withOpacity(0.2),
-                            Colors.white.withOpacity(0.05),
+                            _cardDark.withValues(alpha: 0.8),
+                            _cardDark.withValues(alpha: 0.4),
                           ],
                         ),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.4),
+                          color: _mintGreen.withValues(alpha: 0.3),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 20,
-                            offset: Offset(0, 10),
+                            offset: const Offset(0, 10),
                           ),
                           BoxShadow(
-                            color: color.withOpacity(0.3),
+                            color: _mintGreen.withValues(alpha: 0.1),
                             blurRadius: 30,
                             spreadRadius: -5,
                           ),
@@ -301,8 +314,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    Colors.white.withOpacity(0.3),
-                                    Colors.white.withOpacity(0.0),
+                                    _mintGreen.withValues(alpha: 0.15),
+                                    _mintGreen.withValues(alpha: 0.0),
                                   ],
                                 ),
                               ),
@@ -313,7 +326,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             child: Icon(
                               icon,
                               size: 60,
-                              color: Colors.white.withOpacity(0.95),
+                              color: _mintGreen.withValues(alpha: 0.9),
                             ),
                           ),
                         ],
@@ -325,15 +338,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: _textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                     shadows: [
                       Shadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.5),
                         blurRadius: 8,
-                        offset: Offset(0, 2),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),

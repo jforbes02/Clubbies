@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timezone
-
+import cloudinary
+import cloudinary.uploader
 from sqlalchemy.orm import Session, joinedload
 from . import p_model
 from fastapi import UploadFile, HTTPException
@@ -34,26 +35,33 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
 
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
-        #filepath
-        upload_dir = "uploads/photos"
-        user_dir = os.path.join(upload_dir, str(user_id))  # Convert user_id to string
-        os.makedirs(user_dir, exist_ok=True)
-        file_path = os.path.join(user_dir, unique_filename)
-        img_url = f"/static/photos/{user_id}/{unique_filename}"
-
-        #save file
+        # Read file content
         file_content = await file.read()
-        if len(file_content) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail="File too large")
-        try:
-            with open(file_path, 'wb') as buffer:
-                buffer.write(file_content)
-        except OSError:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            raise HTTPException(status_code=500, detail="Failed to write to file")
 
-        #make db record
+        # Validate file size (10MB limit)
+        if len(file_content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB")
+
+        # Upload to Cloudinary
+        cloudinary_public_id = None
+        try:
+            upload_res = cloudinary.uploader.upload(
+                file_content,
+                folder=f"clubbies/venues/{photo_data.venue_id}",
+                public_id=unique_filename.split('.')[0],
+                overwrite=False,
+            )
+            img_url = upload_res.get("secure_url")
+            cloudinary_public_id = upload_res.get("public_id")
+
+            if not img_url:
+                raise HTTPException(status_code=500, detail="Cloudinary upload failed - no URL returned")
+
+        except Exception as e:
+            logging.error(f"Cloudinary upload failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload to Cloudinary: {str(e)}")
+
+        # Create database record
         try:
             photo = Photo(
                 img_url=img_url,
@@ -67,27 +75,40 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
             db.add(photo)
             db.commit()
             db.refresh(photo)
+
         except IntegrityError as e:
-            # Foreign key constraint violation (venue doesn't exist)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logging.info(f"Cleaned up orphaned file: {file_path}")
+            # Foreign key constraint violation - clean up Cloudinary upload
             db.rollback()
+            if cloudinary_public_id:
+                try:
+                    cloudinary.uploader.destroy(cloudinary_public_id)
+                    logging.info(f"Cleaned up Cloudinary upload: {cloudinary_public_id}")
+                except Exception as cleanup_error:
+                    logging.error(f"Failed to cleanup Cloudinary upload: {cleanup_error}")
+
             if "venue_id" in str(e):
                 raise HTTPException(status_code=404, detail="Venue not found")
             else:
                 raise HTTPException(status_code=400, detail="Invalid data provided")
+
         except Exception as e:
-            # Other database operation failed - clean up the file
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logging.info(f"Cleaned up orphaned file: {file_path}")
+            # Other database error - clean up Cloudinary upload
             db.rollback()
+            if cloudinary_public_id:
+                try:
+                    cloudinary.uploader.destroy(cloudinary_public_id)
+                    logging.info(f"Cleaned up Cloudinary upload: {cloudinary_public_id}")
+                except Exception as cleanup_error:
+                    logging.error(f"Failed to cleanup Cloudinary upload: {cleanup_error}")
             raise HTTPException(status_code=500, detail="Failed to save photo to database")
 
         return photo
+
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
+        logging.error(f"Unexpected error in create_photo: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to upload photo: {str(e)}")
 
 def get_photo_by_id(db: Session, picture_id: int) -> Photo:
@@ -145,14 +166,38 @@ def get_photos_by_user(db: Session, user_id: int, after_photo_id: int = None, li
 def delete_photo(db: Session, photo_id: int) -> None:
     try:
         photo = get_photo_by_id(db, photo_id)
-        filepath = photo.img_url.replace("static/", "uploads/")
-        os.remove(filepath)
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            logging.info(f"Deleted photo {filepath}")
+
+        # Extract public_id from Cloudinary URL
+        # URL format: https://res.cloudinary.com/{cloud_name}/image/upload/{version}/{public_id}.{ext}
+        try:
+            url_parts = photo.img_url.split('/')
+            # Find 'upload' in the URL and get everything after it
+            upload_index = url_parts.index('upload')
+            # public_id is everything after 'upload' (excluding version if present)
+            public_id_parts = url_parts[upload_index + 1:]
+
+            # Skip version number if present (starts with 'v' followed by digits)
+            if public_id_parts and public_id_parts[0].startswith('v') and public_id_parts[0][1:].isdigit():
+                public_id_parts = public_id_parts[1:]
+
+            # Join remaining parts and remove file extension
+            public_id = '/'.join(public_id_parts).rsplit('.', 1)[0]
+
+            # Delete from Cloudinary
+            cloudinary.uploader.destroy(public_id)
+            logging.info(f"Deleted photo from Cloudinary: {public_id}")
+
+        except Exception as cloudinary_error:
+            # Log error but continue with database deletion
+            logging.error(f"Failed to delete from Cloudinary: {cloudinary_error}")
+
+        # Delete from database
         db.delete(photo)
         db.commit()
-        logging.info(f"Deleted photo {photo_id}")
+        logging.info(f"Deleted photo {photo_id} from database")
+
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         logging.error(f"Failed to delete photo: {str(e)}")
