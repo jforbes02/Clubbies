@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from . import v_models
-from app.models.models import Venue
+from app.models.models import Venue, Photo
 import logging
 from typing import List, Optional
+import cloudinary.uploader
 
 
 def create_venue(db: Session, venue_data: v_models.VenueCreate) -> Venue:
@@ -65,6 +66,30 @@ def update_venue(db: Session, venue_id: int, change_venue: v_models.VenueUpdate)
 def delete_venue(db: Session, venue_id: int) -> None:
     try:
         venue = get_venue_by_id(db, venue_id)  # sees if venue exists
+
+        # Delete photos from Cloudinary before deleting from database
+        photos = db.query(Photo).filter(Photo.venue_id == venue_id).all()
+        for photo in photos:
+            try:
+                # Extract public_id from Cloudinary URL
+                url_parts = photo.img_url.split('/')
+                upload_index = url_parts.index('upload')
+                public_id_parts = url_parts[upload_index + 1:]
+
+                # Skip version number if present
+                if public_id_parts and public_id_parts[0].startswith('v') and public_id_parts[0][1:].isdigit():
+                    public_id_parts = public_id_parts[1:]
+
+                # Join remaining parts and remove file extension
+                public_id = '/'.join(public_id_parts).rsplit('.', 1)[0]
+
+                # Delete from Cloudinary
+                cloudinary.uploader.destroy(public_id)
+                logging.info(f"Deleted photo from Cloudinary: {public_id}")
+            except Exception as cloudinary_error:
+                # Log error but continue with deletion
+                logging.error(f"Failed to delete photo from Cloudinary: {cloudinary_error}")
+
         db.delete(venue)
         db.commit()
         logging.info(f"Venue {venue.venue_name} deleted, ID: {venue_id}")

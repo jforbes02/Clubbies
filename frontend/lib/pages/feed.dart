@@ -34,7 +34,7 @@ class _FeedPageState extends State<FeedPage> {
   User? _currentUser;
 
   // Map to store photos for each venue
-  Map<int, List<Photo>> _venuePhotos = {};
+  final Map<int, List<Photo>> _venuePhotos = {};
 
   // Map to store user's ratings for each venue (venueId -> ratingId)
   //Map<int, int?> _userRatings = {};
@@ -1110,7 +1110,7 @@ ${venue.description != null && venue.description!.isNotEmpty ? '\n${venue.descri
           // Display actual photo or placeholder
           if (hasPhoto)
             Image.network(
-              'http://127.0.0.1:8000${photos[0].imgUrl}',
+              photos[0].imgUrl,
               height: 220,
               width: double.infinity,
               fit: BoxFit.cover,

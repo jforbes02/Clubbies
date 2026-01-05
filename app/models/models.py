@@ -110,7 +110,7 @@ class Venue(Base):
     capacity = Column(SQEnum(VenueCapacity), nullable=False)
     price = Column(Integer, nullable=False)
     #relationships
-    reviews = relationship("Review", backref="venue")
-    photos = relationship("Photo", backref="venue")
-    ratings = relationship("Rating", backref="venue")
+    reviews = relationship("Review", backref="venue", cascade="all, delete-orphan")
+    photos = relationship("Photo", backref="venue", cascade="all, delete-orphan")
+    ratings = relationship("Rating", backref="venue", cascade="all, delete-orphan")
 

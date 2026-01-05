@@ -8,7 +8,6 @@ import '../services/venue_service.dart';
 import '../services/review_service.dart';
 import '../services/photo_service.dart';
 import '../services/admin_service.dart';
-import '../config/environment.dart';
 import 'venue_detail.dart';
 
 class AdminPage extends StatefulWidget {
@@ -704,7 +703,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           fit: StackFit.expand,
           children: [
             Image.network(
-              '${Environment.apiBaseUrl}${photo.imgUrl}',
+              photo.imgUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
