@@ -16,7 +16,7 @@ class PhotoResponse(BaseModel):
     username: str
     uploaded_at: datetime
     caption: Optional[str] = Field(None, max_length=255)
-    content_type: Optional[str] = Field(None, max_length=255)
+    content_type: str = Field(None, max_length=30)
 
     class Config:
         from_attributes = True

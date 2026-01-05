@@ -28,7 +28,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Clubbies API", 
     version="0.1",
-    description="A nightlife venue review and photo sharing API"
+    description="A nightlife venue review API"
 )
 
 # Setup security middleware

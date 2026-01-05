@@ -10,6 +10,8 @@ import logging
 import uuid
 from typing import List
 from sqlalchemy.exc import IntegrityError
+from PIL import Image
+import io
 
 async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int, file: UploadFile) -> Photo:
     try:
@@ -41,7 +43,11 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
         # Validate file size (10MB limit)
         if len(file_content) > 10 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB")
-
+        try:
+            Image.open(io.BytesIO(file_content)).verify()
+        except Exception as img_error:
+            logging.error(f"Image validation failed for file: {file.filename}, error: {str(img_error)}")
+            raise HTTPException(status_code=400, detail="Uploaded file is not a valid image")
         # Upload to Cloudinary
         cloudinary_public_id = None
         try:
@@ -50,6 +56,8 @@ async def create_photo(db: Session, photo_data: p_model.PhotoBase, user_id: int,
                 folder=f"clubbies/venues/{photo_data.venue_id}",
                 public_id=unique_filename.split('.')[0],
                 overwrite=False,
+                resource_type="image",
+                transformation={"quality":"auto","fetch_format":"auto"},               
             )
             img_url = upload_res.get("secure_url")
             cloudinary_public_id = upload_res.get("public_id")
