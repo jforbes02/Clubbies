@@ -45,6 +45,11 @@ class _FeedPageState extends State<FeedPage> {
     _loadVenues();
   }
 
+  // Public method for external refresh calls
+  void refresh() {
+    _loadVenues();
+  }
+
   Future<void> _loadVenues() async {
     try {
       final venues = await _venueService.getAllVenues();
@@ -879,35 +884,56 @@ ${venue.description != null && venue.description!.isNotEmpty ? '\n${venue.descri
     }
 
     if (_venues.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: _mintGreen.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.explore_outlined, color: _mintGreen.withValues(alpha: 0.6), size: 50),
+      return RefreshIndicator(
+        onRefresh: _loadVenues,
+        color: _mintGreen,
+        backgroundColor: _cardDark,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: MediaQuery.of(context).size.height - 200,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: _mintGreen.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.explore_outlined, color: _mintGreen.withValues(alpha: 0.6), size: 50),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No venues available yet.',
+                  style: TextStyle(color: _textSecondary, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Pull down to refresh',
+                  style: TextStyle(color: _textSecondary.withValues(alpha: 0.6), fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No venues available yet.',
-              style: TextStyle(color: _textSecondary, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 80),
-      itemCount: _venues.length,
-      itemBuilder: (context, index) {
-        return _buildVenuePost(_venues[index]);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadVenues,
+      color: _mintGreen,
+      backgroundColor: _cardDark,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 80),
+        itemCount: _venues.length,
+        itemBuilder: (context, index) {
+          return _buildVenuePost(_venues[index]);
+        },
+      ),
     );
   }
 

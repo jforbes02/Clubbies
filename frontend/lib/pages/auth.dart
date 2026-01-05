@@ -123,7 +123,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           ),
                           SizedBox(height:8),
                           Text(
-                            isLogin ? 'Welcome Back' : 'Join the Night',
+                            isLogin ? 'Welcome To The Party!' : 'Join the Night',
                             style: TextStyle(
                               fontSize: 18,
                               color: _textSecondary,

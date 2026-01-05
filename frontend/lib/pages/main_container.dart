@@ -16,10 +16,14 @@ class MainContainer extends StatefulWidget {
   State<MainContainer> createState() => _MainContainerState();
 }
 
-class _MainContainerState extends State<MainContainer> with TickerProviderStateMixin {
+class _MainContainerState extends State<MainContainer> with TickerProviderStateMixin, RouteAware {
   late int _selectedIndex;
   late AnimationController _wiggleController;
   late Animation<double> _wiggleAnimation;
+
+  // Keys to access page states for refreshing
+  final GlobalKey<State<FeedPage>> _feedKey = GlobalKey();
+  final GlobalKey<State<ProfilePage>> _profileKey = GlobalKey();
 
   // Dark theme colors
   static const Color _backgroundDark = Color(0xFF0A0A0A);
@@ -54,15 +58,38 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
     super.dispose();
   }
 
+  void _onTabSelected(int index) {
+    if (_selectedIndex == index) return; // Already on this page
+
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // Refresh pages when navigating to them
+    if (index == 0) {
+      // Refresh Feed page
+      final feedState = _feedKey.currentState as dynamic;
+      if (feedState != null && feedState.mounted) {
+        feedState.refresh();
+      }
+    } else if (index == 2) {
+      // Refresh Profile page
+      final profileState = _profileKey.currentState as dynamic;
+      if (profileState != null && profileState.mounted) {
+        profileState.refresh();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: const [
-          FeedPage(),
-          SearchPage(),
-          ProfilePage(),
+        children: [
+          FeedPage(key: _feedKey),
+          const SearchPage(),
+          ProfilePage(key: _profileKey),
         ],
       ),
       bottomNavigationBar: _buildWigglyNavBar(),
@@ -157,8 +184,6 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
 
     return GestureDetector(
       onTap: () {
-        if (_selectedIndex == index) return; // Already on this page
-
         // Handle Map tab (not implemented yet)
         if (index == 3) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -174,9 +199,7 @@ class _MainContainerState extends State<MainContainer> with TickerProviderStateM
           return;
         }
 
-        setState(() {
-          _selectedIndex = index;
-        });
+        _onTabSelected(index);
       },
       child: Transform.translate(
         offset: Offset(0, offsetY),
